@@ -17,7 +17,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 7 complete: `src/obsidian_ops/page_context.py` implemented for URL-to-file resolution.
 - Step 8 complete: `src/obsidian_ops/inject.py` implemented for post-build HTML tag injection.
 - Step 9 complete: `src/obsidian_ops/tools.py` implemented with all 7 tool endpoints and dispatch.
-- Next action: Step 10 (`agent.py`).
+- Step 10 complete: `src/obsidian_ops/agent.py` implemented for model/tool interaction loop and SSE progress.
+- Next action: Step 11 (`queue.py`).
 
 ## Resume Notes
 
