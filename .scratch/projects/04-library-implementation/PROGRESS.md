@@ -7,7 +7,7 @@
 | Step 1: config.py | done | Added settings model, validators, cached `get_settings()`, and `pydantic-settings` dependency |
 | Step 2: models.py | done | Added `JobStatus`, `Job`, API request/response, `SSEEvent`, and `HistoryEntry` |
 | Step 3: locks.py | done | Added `FileLockManager` with per-resolved-path locks |
-| Step 4: fs_atomic.py | pending | |
+| Step 4: fs_atomic.py | done | Added safe read size guards, atomic write-by-replace, and vault path validation |
 | Step 5: history_jj.py | pending | |
 | Step 6: rebuild.py | pending | |
 | Step 7: page_context.py | pending | |
