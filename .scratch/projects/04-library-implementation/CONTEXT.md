@@ -14,7 +14,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 4 complete: `src/obsidian_ops/fs_atomic.py` for safe reads, atomic writes, and path protection checks.
 - Step 5 complete: `src/obsidian_ops/history_jj.py` implemented with non-blocking `jj` command execution.
 - Step 6 complete: `src/obsidian_ops/rebuild.py` implemented for async Kiln site rebuilds.
-- Next action: Step 7 (`page_context.py`).
+- Step 7 complete: `src/obsidian_ops/page_context.py` implemented for URL-to-file resolution.
+- Next action: Step 8 (`inject.py`).
 
 ## Resume Notes
 

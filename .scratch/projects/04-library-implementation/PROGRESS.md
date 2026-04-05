@@ -10,7 +10,7 @@
 | Step 4: fs_atomic.py | done | Added safe read size guards, atomic write-by-replace, and vault path validation |
 | Step 5: history_jj.py | done | Added async Jujutsu wrapper with commit/undo/log/diff and timeout controls |
 | Step 6: rebuild.py | done | Added async Kiln rebuild wrapper (`kiln generate`) |
-| Step 7: page_context.py | pending | |
+| Step 7: page_context.py | done | Added URL-to-vault markdown path resolution |
 | Step 8: inject.py | pending | |
 | Step 9: tools.py | pending | |
 | Step 10: agent.py | pending | |
