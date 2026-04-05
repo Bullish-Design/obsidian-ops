@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {"id": "home", "type": "text", "x": 0, "y": 0, "width": 260, "height": 120, "text": "Home"},
+    {"id": "guides", "type": "text", "x": 320, "y": -120, "width": 260, "height": 120, "text": "Guides"},
+    {"id": "blog", "type": "text", "x": 320, "y": 40, "width": 260, "height": 120, "text": "Blog"},
+    {"id": "projects", "type": "text", "x": 320, "y": 200, "width": 260, "height": 120, "text": "Projects"}
+  ],
+  "edges": [
+    {"id": "e1", "fromNode": "home", "toNode": "guides"},
+    {"id": "e2", "fromNode": "home", "toNode": "blog"},
+    {"id": "e3", "fromNode": "home", "toNode": "projects"}
+  ]
+}
