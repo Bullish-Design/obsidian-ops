@@ -10,6 +10,9 @@ This demo provides a realistic Obsidian-style vault and a one-command local run 
   - `OPS_VAULT_DIR` set to the runtime vault
   - `OPS_SITE_DIR` set to `gen/obsidian-ops/site`
 - On startup, the app performs an initial Kiln build and injects overlay assets.
+- Uses vLLM backend defaults for this environment:
+  - base URL: `http://remora-server:8000/v1`
+  - model: auto-selected from `GET /v1/models` unless provided explicitly
 
 ## Run
 
@@ -28,6 +31,23 @@ Then open:
 demo/obsidian-ops/run_demo.sh
 ```
 
+`run_demo.sh` supports env overrides:
+
+```bash
+VLLM_BASE_URL="http://remora-server:8000/v1" \
+VLLM_MODEL="Qwen/Qwen3-4B-Instruct-2507-FP8" \
+VLLM_API_KEY="" \
+demo/obsidian-ops/run_demo.sh
+```
+
+Or with CLI flags directly:
+
+```bash
+devenv shell -- ops-demo run \
+  --vllm-base-url http://remora-server:8000/v1 \
+  --vllm-model Qwen/Qwen3-4B-Instruct-2507-FP8
+```
+
 ## Cleanup generated demo artifacts
 
 ```bash
@@ -38,3 +58,11 @@ Generated runtime files are written to:
 
 - `.scratch/projects/06-demo-scaffold/generated/`
 - `gen/obsidian-ops/`
+
+## Troubleshooting
+
+- `requested model ... is unavailable`:
+  - Run `curl -s http://remora-server:8000/v1/models` and choose a valid `id`.
+- `failed to query vLLM models ...`:
+  - Verify host/network reachability to `remora-server:8000`.
+  - Try overriding with `--vllm-base-url`.

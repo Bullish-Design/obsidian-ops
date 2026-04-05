@@ -15,3 +15,8 @@
   - `devenv shell -- timeout 20s ops-demo run --host 127.0.0.1 --port 18081 --cleanup`
   - Successfully auto-selected model from remora backend and reached app startup.
 - Next action: update docs/scripts and add automated tests.
+- Documentation/script updates now applied:
+  - `demo/obsidian-ops/README.md` documents remora defaults, CLI/env overrides, and troubleshooting.
+  - `demo/obsidian-ops/run_demo.sh` now passes `VLLM_BASE_URL` / `VLLM_MODEL` / `VLLM_API_KEY`.
+- Additional smoke run via `run_demo.sh` confirmed backend preflight works; failed on port bind because `127.0.0.1:8080` was already in use (expected local environment issue, not backend wiring issue).
+- Next action: add automated unit tests for demo CLI vLLM helpers and wiring.
