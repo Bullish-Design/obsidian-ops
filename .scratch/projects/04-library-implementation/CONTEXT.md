@@ -18,7 +18,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 8 complete: `src/obsidian_ops/inject.py` implemented for post-build HTML tag injection.
 - Step 9 complete: `src/obsidian_ops/tools.py` implemented with all 7 tool endpoints and dispatch.
 - Step 10 complete: `src/obsidian_ops/agent.py` implemented for model/tool interaction loop and SSE progress.
-- Next action: Step 11 (`queue.py`).
+- Step 11 complete: `src/obsidian_ops/queue.py` implemented with in-memory jobs + SSE streaming worker.
+- Next action: Step 12 (`app.py` and undo integration).
 
 ## Resume Notes
 
