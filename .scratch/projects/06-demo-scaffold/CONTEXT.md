@@ -10,4 +10,4 @@
   - `devenv shell -- ops-demo --help` succeeded.
   - `devenv shell -- timeout 25s ops-demo run --host 127.0.0.1 --port 18080` reached successful startup (`Application startup complete`).
   - `devenv shell -- ops-demo cleanup` removed generated demo runtime/artifacts.
-- Next: commit and push changes.
+- Status: committed and pushed to `main` in commit `20611bc`.
