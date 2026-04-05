@@ -19,4 +19,8 @@
   - `demo/obsidian-ops/README.md` documents remora defaults, CLI/env overrides, and troubleshooting.
   - `demo/obsidian-ops/run_demo.sh` now passes `VLLM_BASE_URL` / `VLLM_MODEL` / `VLLM_API_KEY`.
 - Additional smoke run via `run_demo.sh` confirmed backend preflight works; failed on port bind because `127.0.0.1:8080` was already in use (expected local environment issue, not backend wiring issue).
-- Next action: add automated unit tests for demo CLI vLLM helpers and wiring.
+- Automated test coverage added:
+  - New `tests/test_demo_cli.py` covers URL normalization, model fetching/selection, and env wiring in `_run_server`.
+  - `devenv shell -- pytest tests/test_demo_cli.py -v` passed.
+  - `devenv shell -- pytest tests/ -q` passed.
+- Next action: perform final remora end-to-end verification and close out project.
