@@ -12,7 +12,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 2 complete: `src/obsidian_ops/models.py` with job lifecycle + API/SSE models.
 - Step 3 complete: `src/obsidian_ops/locks.py` implemented for path-scoped async locks.
 - Step 4 complete: `src/obsidian_ops/fs_atomic.py` for safe reads, atomic writes, and path protection checks.
-- Next action: Step 5 (`history_jj.py`).
+- Step 5 complete: `src/obsidian_ops/history_jj.py` implemented with non-blocking `jj` command execution.
+- Next action: Step 6 (`rebuild.py`).
 
 ## Resume Notes
 

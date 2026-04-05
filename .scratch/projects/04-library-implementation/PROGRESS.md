@@ -8,7 +8,7 @@
 | Step 2: models.py | done | Added `JobStatus`, `Job`, API request/response, `SSEEvent`, and `HistoryEntry` |
 | Step 3: locks.py | done | Added `FileLockManager` with per-resolved-path locks |
 | Step 4: fs_atomic.py | done | Added safe read size guards, atomic write-by-replace, and vault path validation |
-| Step 5: history_jj.py | pending | |
+| Step 5: history_jj.py | done | Added async Jujutsu wrapper with commit/undo/log/diff and timeout controls |
 | Step 6: rebuild.py | pending | |
 | Step 7: page_context.py | pending | |
 | Step 8: inject.py | pending | |
