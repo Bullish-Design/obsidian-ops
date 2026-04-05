@@ -1,0 +1,4 @@
+interface:
+  display_name: "LSP Recovery Loop"
+  short_description: "Simplify logs, fix, commit, verify loop"
+  default_prompt: "Use $lsp-chat-recovery-loop to simplify the latest run logs, build a hypothesis report, implement the fix, commit it, and provide verification steps."
