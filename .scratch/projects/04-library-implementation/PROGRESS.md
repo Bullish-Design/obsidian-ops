@@ -11,7 +11,7 @@
 | Step 5: history_jj.py | done | Added async Jujutsu wrapper with commit/undo/log/diff and timeout controls |
 | Step 6: rebuild.py | done | Added async Kiln rebuild wrapper (`kiln generate`) |
 | Step 7: page_context.py | done | Added URL-to-vault markdown path resolution |
-| Step 8: inject.py | pending | |
+| Step 8: inject.py | done | Added recursive HTML overlay injection with marker-based idempotency |
 | Step 9: tools.py | pending | |
 | Step 10: agent.py | pending | |
 | Step 11: queue.py | pending | |

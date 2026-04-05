@@ -15,7 +15,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 5 complete: `src/obsidian_ops/history_jj.py` implemented with non-blocking `jj` command execution.
 - Step 6 complete: `src/obsidian_ops/rebuild.py` implemented for async Kiln site rebuilds.
 - Step 7 complete: `src/obsidian_ops/page_context.py` implemented for URL-to-file resolution.
-- Next action: Step 8 (`inject.py`).
+- Step 8 complete: `src/obsidian_ops/inject.py` implemented for post-build HTML tag injection.
+- Next action: Step 9 (`tools.py`).
 
 ## Resume Notes
 
