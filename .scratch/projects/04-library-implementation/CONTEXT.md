@@ -9,7 +9,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - New implementation project scaffold is created in `.scratch/projects/04-library-implementation/`.
 - Step 1 complete: `src/obsidian_ops/config.py` implemented with `BaseSettings`, path validators, and cached settings loader.
 - Added `pydantic-settings` dependency in `pyproject.toml`.
-- Next action: Step 2 (`models.py`).
+- Step 2 complete: `src/obsidian_ops/models.py` with job lifecycle + API/SSE models.
+- Next action: Step 3 (`locks.py`).
 
 ## Resume Notes
 
