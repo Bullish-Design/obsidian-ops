@@ -20,7 +20,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 10 complete: `src/obsidian_ops/agent.py` implemented for model/tool interaction loop and SSE progress.
 - Step 11 complete: `src/obsidian_ops/queue.py` implemented with in-memory jobs + SSE streaming worker.
 - Step 12 complete: FastAPI app/lifespan/routes wired in `src/obsidian_ops/app.py`, entrypoint added, undo modeled as queued job.
-- Next action: Steps 13 and 14 (`static/ops.css`, `static/ops.js`).
+- Step 13 complete: `src/obsidian_ops/static/ops.css` implemented for overlay styles and state-driven visibility.
+- Next action: Step 14 (`static/ops.js`).
 
 ## Resume Notes
 
