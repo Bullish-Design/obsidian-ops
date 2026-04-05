@@ -48,6 +48,18 @@ class JobQueue:
         self._pending.put_nowait(job.id)
         return job
 
+    def create_undo_job(self) -> Job:
+        job = Job(
+            id=uuid.uuid4().hex[:8],
+            instruction="undo",
+            file_path=None,
+            is_undo=True,
+            created_at=datetime.now(UTC),
+        )
+        self._jobs[job.id] = job
+        self._pending.put_nowait(job.id)
+        return job
+
     def get_job(self, job_id: str) -> Job | None:
         return self._jobs.get(job_id)
 
@@ -80,26 +92,38 @@ async def run_worker(
             await queue.broadcaster.publish(job_id, event)
 
         try:
-            result = await agent.run(job.instruction, job.file_path, on_progress)
-
-            if result.get("changed_files"):
-                await queue.broadcaster.publish(job_id, SSEEvent(type="status", message="Recording changes..."))
-                try:
-                    await jj.commit(f"ops: {job.instruction[:80]}")
-                except Exception as exc:  # noqa: BLE001
-                    raise RuntimeError(
-                        "Files were changed but history recording failed. You may need to inspect the vault manually."
-                    ) from exc
-
+            if job.is_undo:
+                await queue.broadcaster.publish(job_id, SSEEvent(type="status", message="Undoing last change..."))
+                await jj.undo()
                 await queue.broadcaster.publish(job_id, SSEEvent(type="status", message="Rebuilding site..."))
                 try:
                     await rebuilder.rebuild()
                     injector(settings.site_dir)
+                    result = {"summary": "Last change undone.", "changed_files": []}
                 except Exception:  # noqa: BLE001
                     warning = "Changes saved but site rebuild failed. Refresh may show stale content."
-                    summary = str(result.get("summary", "")).strip()
-                    result["summary"] = f"{summary}\n\n{warning}".strip()
-                    result["warning"] = warning
+                    result = {"summary": f"Last change undone.\n\n{warning}", "changed_files": [], "warning": warning}
+            else:
+                result = await agent.run(job.instruction, job.file_path, on_progress)
+
+                if result.get("changed_files"):
+                    await queue.broadcaster.publish(job_id, SSEEvent(type="status", message="Recording changes..."))
+                    try:
+                        await jj.commit(f"ops: {job.instruction[:80]}")
+                    except Exception as exc:  # noqa: BLE001
+                        raise RuntimeError(
+                            "Files were changed but history recording failed. You may need to inspect the vault manually."
+                        ) from exc
+
+                    await queue.broadcaster.publish(job_id, SSEEvent(type="status", message="Rebuilding site..."))
+                    try:
+                        await rebuilder.rebuild()
+                        injector(settings.site_dir)
+                    except Exception:  # noqa: BLE001
+                        warning = "Changes saved but site rebuild failed. Refresh may show stale content."
+                        summary = str(result.get("summary", "")).strip()
+                        result["summary"] = f"{summary}\n\n{warning}".strip()
+                        result["warning"] = warning
 
             job.status = JobStatus.SUCCEEDED
             job.result = result

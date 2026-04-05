@@ -18,6 +18,7 @@ class Job(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     instruction: str
     file_path: str | None = None
+    is_undo: bool = False
     status: JobStatus = JobStatus.QUEUED
     messages: list[str] = Field(default_factory=list)
     result: dict | None = None

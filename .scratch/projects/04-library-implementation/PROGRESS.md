@@ -15,7 +15,7 @@
 | Step 9: tools.py | done | Implemented 7 tool methods, OpenAI tool schemas, dispatch, and changed-file tracking |
 | Step 10: agent.py | done | Added tool-use loop with progress callbacks and iteration cap handling |
 | Step 11: queue.py | done | Added FIFO job queue, SSE broadcaster, and background worker lifecycle |
-| Step 12: app.py + entrypoint | pending | |
+| Step 12: app.py + entrypoint | done | Added lifespan/app routes, SSE stream endpoint, undo queue path, and module entrypoint |
 | Step 13: static/ops.css | pending | |
 | Step 14: static/ops.js | pending | |
 | Step 15: tests + verification | pending | |
