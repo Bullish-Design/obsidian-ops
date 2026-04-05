@@ -9,6 +9,10 @@
     pkgs.git 
     pkgs.jujutsu
     pkgs.uv
+    (inputs.kiln.packages.${pkgs.system}.default.overrideAttrs (_: {
+      vendorHash = "sha256-HL4H+HOVHu7H71V7t4bjWBcquaimuh/GkPnuwPiuZ0A=";
+      doCheck = false;
+    }))
     ];
 
   # https://devenv.sh/languages/
