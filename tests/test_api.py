@@ -19,6 +19,16 @@ def test_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
 
     (vault_dir / "index.md").write_text("home", encoding="utf-8")
     (site_dir / "index.html").write_text("<html><head></head><body>ok</body></html>", encoding="utf-8")
+    (site_dir / "guides").mkdir()
+    (site_dir / "guides" / "getting-started.html").write_text(
+        "<html><head></head><body>getting started</body></html>",
+        encoding="utf-8",
+    )
+    (site_dir / "docs" / "page").mkdir(parents=True)
+    (site_dir / "docs" / "page" / "index.html").write_text(
+        "<html><head></head><body>docs page</body></html>",
+        encoding="utf-8",
+    )
 
     monkeypatch.setenv("OPS_VAULT_DIR", str(vault_dir))
     monkeypatch.setenv("OPS_SITE_DIR", str(site_dir))
@@ -92,3 +102,17 @@ def test_create_job_missing_instruction_returns_422(test_client: TestClient) -> 
     )
 
     assert response.status_code == 422
+
+
+def test_clean_url_rewrites_to_html_leaf_page(test_client: TestClient) -> None:
+    response = test_client.get("/guides/getting-started")
+
+    assert response.status_code == 200
+    assert "getting started" in response.text
+
+
+def test_clean_url_rewrites_to_directory_index(test_client: TestClient) -> None:
+    response = test_client.get("/docs/page")
+
+    assert response.status_code == 200
+    assert "docs page" in response.text

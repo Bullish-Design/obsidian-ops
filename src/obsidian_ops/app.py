@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -57,6 +57,27 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(lifespan=lifespan)
+
+    @app.middleware("http")
+    async def rewrite_clean_urls(request: Request, call_next):
+        path = request.url.path
+        if (
+            request.method in {"GET", "HEAD"}
+            and path not in {"/", "/api", "/ops"}
+            and not path.startswith("/api/")
+            and not path.startswith("/ops/")
+            and not path.endswith("/")
+            and not Path(path).suffix
+        ):
+            relative = path.lstrip("/")
+            html_candidate = settings.site_dir / f"{relative}.html"
+            if html_candidate.is_file():
+                request.scope["path"] = f"{path}.html"
+            else:
+                index_candidate = settings.site_dir / relative / "index.html"
+                if index_candidate.is_file():
+                    request.scope["path"] = f"{path}/"
+        return await call_next(request)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:
