@@ -6,7 +6,7 @@
 | Scaffold standard project files | done | `ASSUMPTIONS/PLAN/PROGRESS/CONTEXT/DECISIONS/ISSUES` created |
 | Step 1: config.py | done | Added settings model, validators, cached `get_settings()`, and `pydantic-settings` dependency |
 | Step 2: models.py | done | Added `JobStatus`, `Job`, API request/response, `SSEEvent`, and `HistoryEntry` |
-| Step 3: locks.py | pending | |
+| Step 3: locks.py | done | Added `FileLockManager` with per-resolved-path locks |
 | Step 4: fs_atomic.py | pending | |
 | Step 5: history_jj.py | pending | |
 | Step 6: rebuild.py | pending | |
