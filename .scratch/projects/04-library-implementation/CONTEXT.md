@@ -16,7 +16,8 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 6 complete: `src/obsidian_ops/rebuild.py` implemented for async Kiln site rebuilds.
 - Step 7 complete: `src/obsidian_ops/page_context.py` implemented for URL-to-file resolution.
 - Step 8 complete: `src/obsidian_ops/inject.py` implemented for post-build HTML tag injection.
-- Next action: Step 9 (`tools.py`).
+- Step 9 complete: `src/obsidian_ops/tools.py` implemented with all 7 tool endpoints and dispatch.
+- Next action: Step 10 (`agent.py`).
 
 ## Resume Notes
 

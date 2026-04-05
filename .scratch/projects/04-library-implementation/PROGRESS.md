@@ -12,7 +12,7 @@
 | Step 6: rebuild.py | done | Added async Kiln rebuild wrapper (`kiln generate`) |
 | Step 7: page_context.py | done | Added URL-to-vault markdown path resolution |
 | Step 8: inject.py | done | Added recursive HTML overlay injection with marker-based idempotency |
-| Step 9: tools.py | pending | |
+| Step 9: tools.py | done | Implemented 7 tool methods, OpenAI tool schemas, dispatch, and changed-file tracking |
 | Step 10: agent.py | pending | |
 | Step 11: queue.py | pending | |
 | Step 12: app.py + entrypoint | pending | |
