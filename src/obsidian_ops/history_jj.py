@@ -12,13 +12,16 @@ class JujutsuHistory:
 
     async def _run_jj(self, *args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
         def _run() -> subprocess.CompletedProcess[str]:
-            return subprocess.run(
-                [self._jj_bin, *args],
-                cwd=str(self._vault_dir),
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
+            try:
+                return subprocess.run(
+                    [self._jj_bin, *args],
+                    cwd=str(self._vault_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                )
+            except FileNotFoundError as exc:
+                raise RuntimeError(f"Jujutsu binary not found: {self._jj_bin}") from exc
 
         return await asyncio.to_thread(_run)
 

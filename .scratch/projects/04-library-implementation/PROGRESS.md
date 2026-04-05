@@ -18,4 +18,4 @@
 | Step 12: app.py + entrypoint | done | Added lifespan/app routes, SSE stream endpoint, undo queue path, and module entrypoint |
 | Step 13: static/ops.css | done | Added FAB/modal styling and input/running/success/error UI states |
 | Step 14: static/ops.js | done | Added vanilla JS FAB/modal lifecycle, job submit, SSE streaming, refresh, and undo actions |
-| Step 15: tests + verification | pending | |
+| Step 15: tests + verification | done | Added full test suite; `devenv shell -- pytest tests/ -v` => 42 passed |

@@ -22,7 +22,13 @@ Implement the full `obsidian_ops` library by following `.scratch/projects/03-imp
 - Step 12 complete: FastAPI app/lifespan/routes wired in `src/obsidian_ops/app.py`, entrypoint added, undo modeled as queued job.
 - Step 13 complete: `src/obsidian_ops/static/ops.css` implemented for overlay styles and state-driven visibility.
 - Step 14 complete: `src/obsidian_ops/static/ops.js` implemented for overlay behavior and SSE consumption.
-- Next action: Step 15 (tests + verification).
+- Step 15 complete: unit/integration/API tests added and passing (`42 passed`).
+
+## Final State
+
+- Library implementation completed through all 15 guide steps.
+- `devenv.nix` updated to include `jj` so history integration tests run in environment.
+- Added minimal `README.md` required by packaging metadata for editable install during `uv sync`.
 
 ## Resume Notes
 
