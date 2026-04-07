@@ -7,7 +7,7 @@
 - [x] Step 0 complete (scaffold/deps baseline, validated, committed, pushed).
 - [x] Step 1 complete (`errors.py`, validated, committed, pushed).
 - [x] Step 2 complete (`lock.py` + tests, validated, committed, pushed).
-- [ ] Step 3 complete (`sandbox.py` + tests, validated, committed, pushed).
+- [x] Step 3 complete (`sandbox.py` + tests, validated, committed, pushed).
 - [ ] Step 4 complete (`search.py` + tests, validated, committed, pushed).
 - [ ] Step 5 complete (`vault.py` core + tests, validated, committed, pushed).
 - [ ] Step 6 complete (`frontmatter.py` + tests, validated, committed, pushed).
