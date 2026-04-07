@@ -35,12 +35,7 @@ class JJ:
         if result.returncode != 0:
             stdout = (result.stdout or "").strip()
             stderr = (result.stderr or "").strip()
-            raise VCSError(
-                "jj command failed: "
-                f"{' '.join(cmd)}\n"
-                f"stdout: {stdout}\n"
-                f"stderr: {stderr}"
-            )
+            raise VCSError(f"jj command failed: {' '.join(cmd)}\nstdout: {stdout}\nstderr: {stderr}")
 
         return result.stdout
 

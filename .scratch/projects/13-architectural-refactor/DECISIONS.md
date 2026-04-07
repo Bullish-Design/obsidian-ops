@@ -4,3 +4,5 @@
    - Rationale: reduces churn by resolving spec contradictions up front.
 2. Include severity and concrete remediation in the review.
    - Rationale: converts analysis into an executable doc-edit backlog.
+3. Add `httpx` to dev dependencies.
+   - Rationale: `fastapi.testclient` (via Starlette) requires `httpx` for server endpoint tests.
