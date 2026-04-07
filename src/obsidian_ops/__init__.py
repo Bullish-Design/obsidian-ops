@@ -9,11 +9,13 @@ from obsidian_ops.errors import (
     VaultError,
     VCSError,
 )
+from obsidian_ops.search import SearchResult
 
 __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
+    "SearchResult",
     "VaultError",
     "PathError",
     "FileTooLargeError",
