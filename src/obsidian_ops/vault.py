@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from obsidian_ops.errors import FileTooLargeError, VaultError
+from obsidian_ops.content import find_block, find_heading
+from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError
 from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
@@ -105,6 +106,49 @@ class Vault:
             updated.pop(field, None)
 
             updated_text = serialize_frontmatter(updated, body)
+            self._unsafe_write_file(path, updated_text)
+
+    def read_heading(self, path: str, heading: str) -> str | None:
+        text = self.read_file(path)
+        bounds = find_heading(text, heading)
+        if bounds is None:
+            return None
+        start, end = bounds
+        return text[start:end]
+
+    def write_heading(self, path: str, heading: str, content: str) -> None:
+        with self._lock:
+            text = self.read_file(path)
+            bounds = find_heading(text, heading)
+            if bounds is None:
+                base = text
+                if base and not base.endswith("\n"):
+                    base += "\n"
+                if base and not base.endswith("\n\n"):
+                    base += "\n"
+                replacement = f"{base}{heading}\n{content}"
+            else:
+                start, end = bounds
+                replacement = f"{text[:start]}{content}{text[end:]}"
+            self._unsafe_write_file(path, replacement)
+
+    def read_block(self, path: str, block_id: str) -> str | None:
+        text = self.read_file(path)
+        bounds = find_block(text, block_id)
+        if bounds is None:
+            return None
+        start, end = bounds
+        return text[start:end]
+
+    def write_block(self, path: str, block_id: str, content: str) -> None:
+        with self._lock:
+            text = self.read_file(path)
+            bounds = find_block(text, block_id)
+            if bounds is None:
+                raise ContentPatchError(f"block reference not found: {block_id}")
+            start, end = bounds
+            replacement = content if content.endswith("\n") else f"{content}\n"
+            updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
 
     def is_busy(self) -> bool:
