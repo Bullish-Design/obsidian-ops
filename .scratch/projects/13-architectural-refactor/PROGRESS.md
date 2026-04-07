@@ -10,7 +10,7 @@
 - [x] Step 3 complete (`sandbox.py` + tests, validated, committed, pushed).
 - [x] Step 4 complete (`search.py` + tests, validated, committed, pushed).
 - [x] Step 5 complete (`vault.py` core + tests, validated, committed, pushed).
-- [ ] Step 6 complete (`frontmatter.py` + tests, validated, committed, pushed).
+- [x] Step 6 complete (`frontmatter.py` + tests, validated, committed, pushed).
 - [ ] Step 7 complete (`content.py` + tests, validated, committed, pushed).
 - [ ] Step 8 complete (`vcs.py` + tests, validated, committed, pushed).
 - [ ] Step 9 complete (public API finalization + full validation, committed, pushed).

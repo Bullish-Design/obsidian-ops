@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from obsidian_ops.errors import FileTooLargeError, VaultError
+from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
@@ -68,6 +70,42 @@ class Vault:
     ) -> list[SearchResult]:
         files = walk_vault(self.root, glob, max_results=MAX_LIST_RESULTS)
         return search_content(self.root, query, files, max_results=max_results)
+
+    def get_frontmatter(self, path: str) -> dict[str, Any] | None:
+        text = self.read_file(path)
+        data, _body = parse_frontmatter(text)
+        return data
+
+    def set_frontmatter(self, path: str, data: dict[str, Any]) -> None:
+        with self._lock:
+            text = self.read_file(path)
+            _existing, body = parse_frontmatter(text)
+            updated_text = serialize_frontmatter(data, body)
+            self._unsafe_write_file(path, updated_text)
+
+    def update_frontmatter(self, path: str, updates: dict[str, Any]) -> None:
+        with self._lock:
+            text = self.read_file(path)
+            existing, body = parse_frontmatter(text)
+
+            merged = dict(existing or {})
+            merged.update(updates)
+
+            updated_text = serialize_frontmatter(merged, body)
+            self._unsafe_write_file(path, updated_text)
+
+    def delete_frontmatter_field(self, path: str, field: str) -> None:
+        with self._lock:
+            text = self.read_file(path)
+            existing, body = parse_frontmatter(text)
+            if existing is None:
+                return
+
+            updated = dict(existing)
+            updated.pop(field, None)
+
+            updated_text = serialize_frontmatter(updated, body)
+            self._unsafe_write_file(path, updated_text)
 
     def is_busy(self) -> bool:
         return self._lock.is_held
