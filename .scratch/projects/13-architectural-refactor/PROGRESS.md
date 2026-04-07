@@ -5,7 +5,7 @@
 - [x] Authored `CONCEPT_SPEC_REVIEW.md` with actionable recommendations.
 - [x] Updated project tracking files in this directory.
 - [x] Step 0 complete (scaffold/deps baseline, validated, committed, pushed).
-- [ ] Step 1 complete (`errors.py`, validated, committed, pushed).
+- [x] Step 1 complete (`errors.py`, validated, committed, pushed).
 - [ ] Step 2 complete (`lock.py` + tests, validated, committed, pushed).
 - [ ] Step 3 complete (`sandbox.py` + tests, validated, committed, pushed).
 - [ ] Step 4 complete (`search.py` + tests, validated, committed, pushed).
