@@ -1,4 +1,4 @@
-"""obsidian-ops package."""
+"""obsidian-ops: Sandboxed operations on an Obsidian vault."""
 
 from obsidian_ops.errors import (
     BusyError,
@@ -12,10 +12,7 @@ from obsidian_ops.errors import (
 from obsidian_ops.search import SearchResult
 from obsidian_ops.vault import Vault
 
-__version__ = "0.1.0"
-
 __all__ = [
-    "__version__",
     "Vault",
     "SearchResult",
     "VaultError",

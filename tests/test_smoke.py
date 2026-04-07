@@ -1,5 +1,9 @@
-from obsidian_ops import __version__
+from obsidian_ops import BusyError, PathError, SearchResult, Vault, VCSError
 
 
-def test_package_version_present() -> None:
-    assert __version__ == "0.1.0"
+def test_public_api_imports() -> None:
+    assert Vault is not None
+    assert SearchResult is not None
+    assert PathError is not None
+    assert BusyError is not None
+    assert VCSError is not None
