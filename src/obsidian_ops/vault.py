@@ -12,6 +12,7 @@ from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
+from obsidian_ops.vcs import JJ
 
 MAX_READ_SIZE = 512 * 1024
 MAX_LIST_RESULTS = 200
@@ -33,6 +34,12 @@ class Vault:
         self._lock = MutationLock()
         self.jj_bin = jj_bin
         self.jj_timeout = jj_timeout
+        self._jj: JJ | None = None
+
+    def _get_jj(self) -> JJ:
+        if self._jj is None:
+            self._jj = JJ(self.root, jj_bin=self.jj_bin, timeout=self.jj_timeout)
+        return self._jj
 
     def read_file(self, path: str) -> str:
         abs_path = validate_path(self.root, path)
@@ -150,6 +157,19 @@ class Vault:
             replacement = content if content.endswith("\n") else f"{content}\n"
             updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
+
+    def commit(self, message: str) -> None:
+        with self._lock:
+            jj = self._get_jj()
+            jj.describe(message)
+            jj.new()
+
+    def undo(self) -> None:
+        with self._lock:
+            self._get_jj().undo()
+
+    def vcs_status(self) -> str:
+        return self._get_jj().status()
 
     def is_busy(self) -> bool:
         return self._lock.is_held
