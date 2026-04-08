@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from obsidian_ops.errors import ContentPatchError, FileTooLargeError, FrontmatterError, PathError
 from obsidian_ops.frontmatter import parse_frontmatter
 from obsidian_ops.vault import Vault
 from obsidian_ops.vault import MAX_READ_SIZE
@@ -586,3 +587,106 @@ def test_21_write_block_list_item(integration_api: Vault, integration_vault: Pat
         'vault.write_block("cp-list.md", "^list-ref", "- Updated action item ^list-ref\\n")',
         "PASS",
     )
+
+
+def test_22_error_path_escape(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("22-error-path-escape", integration_vault)
+    with pytest.raises(PathError, match="traversal|not allowed") as exc_info:
+        integration_api.read_file("../../etc/passwd")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "22 — Error: Path Escape",
+        'vault.read_file("../../etc/passwd")',
+        "PASS (raised PathError)",
+    )
+
+
+def test_23_error_absolute_path(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("23-error-absolute-path", integration_vault)
+    with pytest.raises(PathError, match="absolute") as exc_info:
+        integration_api.read_file("/etc/passwd")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "23 — Error: Absolute Path",
+        'vault.read_file("/etc/passwd")',
+        "PASS (raised PathError)",
+    )
+
+
+def test_24_error_empty_path(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("24-error-empty-path", integration_vault)
+    with pytest.raises(PathError, match="empty") as exc_info:
+        integration_api.read_file("")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "24 — Error: Empty Path",
+        'vault.read_file("")',
+        "PASS (raised PathError)",
+    )
+
+
+def test_25_error_file_not_found(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("25-error-file-not-found", integration_vault)
+    with pytest.raises(FileNotFoundError) as exc_info:
+        integration_api.read_file("nonexistent.md")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "25 — Error: Missing File",
+        'vault.read_file("nonexistent.md")',
+        "PASS (raised FileNotFoundError)",
+    )
+
+
+def test_26_error_file_too_large(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("26-error-file-too-large", integration_vault)
+    with pytest.raises(FileTooLargeError) as exc_info:
+        integration_api.read_file("large-file.md")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "26 — Error: File Too Large",
+        'vault.read_file("large-file.md")',
+        "PASS (raised FileTooLargeError)",
+    )
+
+
+def test_27_error_block_not_found(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    _seed_file(integration_vault, "note.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("27-error-block-not-found", integration_vault)
+    with pytest.raises(ContentPatchError, match="not found") as exc_info:
+        integration_api.write_block("note.md", "^missing", "x")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "27 — Error: Block Not Found",
+        'vault.write_block("note.md", "^missing", "x")',
+        "PASS (raised ContentPatchError)",
+    )
+
+
+def test_28_error_malformed_frontmatter(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    _seed_file(integration_vault, "bad-yaml.md", "---\n: [invalid\n---\n")
+    recorder = SnapshotRecorder("28-error-malformed-frontmatter", integration_vault)
+    with pytest.raises(FrontmatterError) as exc_info:
+        integration_api.get_frontmatter("bad-yaml.md")
+    recorder.write_error(exc_info.value)
+    _record_report(
+        integration_report,
+        "28 — Error: Malformed Frontmatter",
+        'vault.get_frontmatter("bad-yaml.md")',
+        "PASS (raised FrontmatterError)",
+    )
+
+
+def test_29_is_busy(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    recorder = SnapshotRecorder("29-is-busy", integration_vault)
+    busy = integration_api.is_busy()
+    recorder.write_result(str(busy))
+    assert busy is False
+    _record_report(integration_report, "29 — Is Busy", "vault.is_busy()", "PASS")

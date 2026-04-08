@@ -73,5 +73,20 @@ Step 4 completed:
   - `diff .scratch/projects/15-test-suite-improvements/integration/17-write-heading-replace/before/cp-heading.md .scratch/projects/15-test-suite-improvements/integration/17-write-heading-replace/after/cp-heading.md`
 
 Next action:
-1. Commit and push Step 4 changes.
-2. Implement Step 5 error handling integration tests.
+1. Implement Step 5 error handling integration tests.
+
+Step 5 completed:
+- Added `test_22` through `test_29` in `tests/test_integration.py` covering:
+  - Path validation errors (traversal/absolute/empty)
+  - Missing file and oversized file
+  - Missing block update error
+  - Malformed frontmatter
+  - `is_busy()` idle behavior
+- Error tests now write `ExceptionType: message` to per-test `result.txt`.
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v -k "error or busy"`
+  - `cat .scratch/projects/15-test-suite-improvements/integration/22-error-path-escape/result.txt`
+
+Next action:
+1. Commit and push Step 5 changes.
+2. Implement Step 6 server endpoint and error mapping tests.
