@@ -5,15 +5,16 @@
 - Step 1: done
 - Step 2: done
 - Step 3: done
-- Step 4: in progress
-- Steps 5-9: pending
+- Step 4: done
+- Step 5: in progress
+- Steps 6-9: pending
 
 ## Checklist
 - [x] Step 0: BUG-1 fix + regression test
 - [x] Step 1: Integration infrastructure
 - [x] Step 2: File operation integration tests
 - [x] Step 3: Frontmatter integration tests
-- [ ] Step 4: Content patching integration tests
+- [x] Step 4: Content patching integration tests
 - [ ] Step 5: Error handling integration tests
 - [ ] Step 6: Server endpoint coverage tests
 - [ ] Step 7: Edge-case unit tests

@@ -465,3 +465,124 @@ def test_15_delete_frontmatter_field_noop(
         'vault.delete_frontmatter_field("fm-noop.md", "nonexistent")',
         "PASS",
     )
+
+
+def test_16_read_heading(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    _seed_file(integration_vault, "cp-heading.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("16-read-heading", integration_vault)
+    recorder.capture_before("cp-heading.md")
+
+    content = integration_api.read_heading("cp-heading.md", "## Agenda")
+    recorder.write_result(content or "")
+    recorder.capture_after("cp-heading.md")
+
+    assert content is not None
+    assert "- Review sprint progress" in content
+    assert "### Action Items" in content
+    _record_report(
+        integration_report,
+        "16 — Read Heading",
+        'vault.read_heading("cp-heading.md", "## Agenda")',
+        "PASS",
+    )
+
+
+def test_17_write_heading_replace(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    path = _seed_file(integration_vault, "cp-heading.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("17-write-heading-replace", integration_vault)
+    recorder.capture_before("cp-heading.md")
+
+    integration_api.write_heading("cp-heading.md", "## Notes", "Replaced notes.\n")
+    recorder.capture_after("cp-heading.md")
+
+    text = path.read_text(encoding="utf-8")
+    assert "Replaced notes.\n" in text
+    assert "Key discussion points from the meeting." not in text
+    assert "## References" in text
+    notes_start = text.index("## Notes\n")
+    refs_start = text.index("## References\n")
+    notes_section = text[notes_start:refs_start]
+    assert "Replaced notes." in notes_section
+    _record_report(
+        integration_report,
+        "17 — Write Heading (Replace)",
+        'vault.write_heading("cp-heading.md", "## Notes", "Replaced notes.\\n")',
+        "PASS",
+    )
+
+
+def test_18_write_heading_append(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    path = _seed_file(integration_vault, "cp-append.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("18-write-heading-append", integration_vault)
+    recorder.capture_before("cp-append.md")
+
+    integration_api.write_heading("cp-append.md", "## New Section", "Appended content.\n")
+    recorder.capture_after("cp-append.md")
+
+    text = path.read_text(encoding="utf-8")
+    assert text.endswith("\n\n## New Section\nAppended content.\n")
+    assert "# Meeting Notes" in text
+    _record_report(
+        integration_report,
+        "18 — Write Heading (Append)",
+        'vault.write_heading("cp-append.md", "## New Section", "Appended content.\\n")',
+        "PASS",
+    )
+
+
+def test_19_read_block(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    _seed_file(integration_vault, "cp-block.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("19-read-block", integration_vault)
+    recorder.capture_before("cp-block.md")
+
+    content = integration_api.read_block("cp-block.md", "^meeting-notes")
+    recorder.write_result(content or "")
+    recorder.capture_after("cp-block.md")
+
+    assert content is not None
+    assert "The team agreed on the new timeline. ^meeting-notes" in content
+    _record_report(
+        integration_report,
+        "19 — Read Block",
+        'vault.read_block("cp-block.md", "^meeting-notes")',
+        "PASS",
+    )
+
+
+def test_20_write_block(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    path = _seed_file(integration_vault, "cp-block.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("20-write-block", integration_vault)
+    recorder.capture_before("cp-block.md")
+
+    integration_api.write_block("cp-block.md", "^ref-block", "Updated reference paragraph. ^ref-block\n")
+    recorder.capture_after("cp-block.md")
+
+    text = path.read_text(encoding="utf-8")
+    assert "Updated reference paragraph. ^ref-block" in text
+    assert "Some reference paragraph. ^ref-block" not in text
+    _record_report(
+        integration_report,
+        "20 — Write Block",
+        'vault.write_block("cp-block.md", "^ref-block", "Updated reference paragraph. ^ref-block\\n")',
+        "PASS",
+    )
+
+
+def test_21_write_block_list_item(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    path = _seed_file(integration_vault, "cp-list.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("21-write-block-list-item", integration_vault)
+    recorder.capture_before("cp-list.md")
+
+    integration_api.write_block("cp-list.md", "^list-ref", "- Updated action item ^list-ref\n")
+    recorder.capture_after("cp-list.md")
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert "- Updated action item ^list-ref" in lines
+    assert "- First item" in lines
+    assert "- Third item" in lines
+    _record_report(
+        integration_report,
+        "21 — Write Block (List Item)",
+        'vault.write_block("cp-list.md", "^list-ref", "- Updated action item ^list-ref\\n")',
+        "PASS",
+    )

@@ -61,5 +61,17 @@ Step 3 completed:
   - `cat .scratch/projects/15-test-suite-improvements/integration/12-update-frontmatter-shallow/after/fm-shallow.md`
 
 Next action:
-1. Commit and push Step 3 changes.
-2. Implement Step 4 content patching integration tests.
+1. Implement Step 4 content patching integration tests.
+
+Step 4 completed:
+- Added `test_16` through `test_21` in `tests/test_integration.py` for:
+  - `read_heading`, `write_heading` (replace + append)
+  - `read_block`, `write_block` (paragraph + list item)
+- Each test records snapshots and report sections.
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v -k "test_16 or test_17 or test_18 or test_19 or test_20 or test_21"`
+  - `diff .scratch/projects/15-test-suite-improvements/integration/17-write-heading-replace/before/cp-heading.md .scratch/projects/15-test-suite-improvements/integration/17-write-heading-replace/after/cp-heading.md`
+
+Next action:
+1. Commit and push Step 4 changes.
+2. Implement Step 5 error handling integration tests.
