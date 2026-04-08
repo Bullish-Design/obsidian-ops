@@ -88,5 +88,28 @@ Step 5 completed:
   - `cat .scratch/projects/15-test-suite-improvements/integration/22-error-path-escape/result.txt`
 
 Next action:
-1. Commit and push Step 5 changes.
-2. Implement Step 6 server endpoint and error mapping tests.
+1. Implement Step 6 server endpoint and error mapping tests.
+
+Step 6 completed:
+- Added missing endpoint tests to `tests/test_server.py`:
+  - `PUT /frontmatter/{path}`
+  - `DELETE /frontmatter/{path}/{field}`
+  - heading/block read/write routes
+  - `POST /vcs/undo`
+  - `GET /vcs/status`
+- Added missing error mapping tests:
+  - `FileTooLargeError` -> 413
+  - `FrontmatterError` -> 422
+  - `ContentPatchError` -> 422
+  - `VCSError` precondition -> 424
+  - `VCSError` execution -> 500
+- `tests/test_server.py` initially failed due missing `fastapi`; ran:
+  - `devenv shell -- uv sync --extra dev --extra server`
+- Verified with:
+  - `devenv shell -- pytest tests/test_server.py -v`
+  - `devenv shell -- pytest tests/test_server.py --cov=obsidian_ops.server --cov-report=term-missing`
+- Result: `src/obsidian_ops/server.py` coverage is 91%.
+
+Next action:
+1. Commit and push Step 6 changes.
+2. Implement Step 7 edge-case unit tests.
