@@ -1,0 +1,10 @@
+
+- Review sprint progress
+- Discuss blockers
+- Plan next sprint
+
+### Action Items
+
+1. Update the roadmap
+2. Schedule design review
+

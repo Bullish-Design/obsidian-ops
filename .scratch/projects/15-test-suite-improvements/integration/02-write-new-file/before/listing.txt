@@ -1,0 +1,8 @@
+.hidden/secret.md
+Projects/Alpha.md
+Projects/Beta.md
+_hidden_dir/internal.md
+existing.md
+large-file.md
+note.md
+to-delete.md

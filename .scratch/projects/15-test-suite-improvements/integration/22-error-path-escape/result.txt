@@ -1,0 +1,1 @@
+PathError: path traversal is not allowed

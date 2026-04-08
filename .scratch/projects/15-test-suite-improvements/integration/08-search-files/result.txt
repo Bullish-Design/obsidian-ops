@@ -1,0 +1,16 @@
+note.md: se
+---
+
+# Meeting Notes
+
+Weekly sync for the product team.
+
+## Agenda
+
+- Review sprint progress
+- Discuss blockers
+- Plan next sprint
+
+### Action Items
+
+1. Update the
