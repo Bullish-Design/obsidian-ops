@@ -34,5 +34,17 @@ Step 1 completed:
   - `ls .scratch/projects/15-test-suite-improvements/integration/vault/`
 
 Next action:
-1. Commit and push Step 1 changes.
-2. Implement Step 2 file operation integration tests.
+1. Implement Step 2 file operation integration tests.
+
+Step 2 completed:
+- Added `test_01` through `test_08` to `tests/test_integration.py` covering:
+  - `read_file`, `write_file` (new/overwrite/nested), `delete_file`
+  - `list_files` (default + glob), `search_files`
+- Each test now captures snapshots via `SnapshotRecorder` and records report sections.
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v -k "test_01 or test_02 or test_03 or test_04 or test_05 or test_06 or test_07 or test_08"`
+  - `diff .scratch/projects/15-test-suite-improvements/integration/03-write-overwrite/before/existing.md .scratch/projects/15-test-suite-improvements/integration/03-write-overwrite/after/existing.md`
+
+Next action:
+1. Commit and push Step 2 changes.
+2. Implement Step 3 frontmatter integration tests.
