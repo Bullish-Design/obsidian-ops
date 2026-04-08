@@ -1,6 +1,6 @@
 [project]
 name = "obsidian-ops"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sandboxed operations on an Obsidian vault."
 readme = "README.md"
 requires-python = ">=3.12"
