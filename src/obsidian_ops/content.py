@@ -59,7 +59,7 @@ def find_heading(text: str, heading: str) -> tuple[int, int] | None:
 
 def find_block(text: str, block_id: str) -> tuple[int, int] | None:
     """Find paragraph/list-item bounds for a block reference."""
-    token_re = re.compile(rf"(?<!\\S){re.escape(block_id)}(?!\\S)")
+    token_re = re.compile(rf"(?<!\S){re.escape(block_id)}(?!\S)")
     lines, offsets = _line_offsets(text)
 
     for index, line in enumerate(lines):

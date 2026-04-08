@@ -110,6 +110,16 @@ def test_find_block_list_item() -> None:
     assert text[bounds[0] : bounds[1]] == "- Item two ^list-ref\n"
 
 
+def test_find_block_no_substring_match() -> None:
+    """Block ID must not match as a substring of a larger token."""
+    text = "This has some^ref-block-extra text\n\nReal block ^ref-block\n"
+    bounds = find_block(text, "^ref-block")
+    assert bounds is not None
+    matched = text[bounds[0] : bounds[1]]
+    assert "Real block ^ref-block" in matched
+    assert "extra" not in matched
+
+
 def test_find_block_not_found() -> None:
     assert find_block("No refs here\n", "^missing") is None
 
