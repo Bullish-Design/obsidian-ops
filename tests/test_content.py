@@ -80,6 +80,15 @@ def test_find_heading_first_match() -> None:
     assert section == "First\n\n"
 
 
+def test_find_heading_non_heading_exact_match() -> None:
+    text = "## Summary\nContent\n\nSummary\nNot a heading.\n"
+    bounds = find_heading(text, "## Summary")
+    assert bounds is not None
+    section = text[bounds[0] : bounds[1]]
+    assert section.startswith("Content")
+    assert "Not a heading." in section
+
+
 def test_write_heading_replaces(tmp_vault: Path) -> None:
     vault = Vault(tmp_vault)
     vault.write_heading("note.md", "## Summary", "Updated summary.\n")
@@ -118,6 +127,15 @@ def test_find_block_no_substring_match() -> None:
     matched = text[bounds[0] : bounds[1]]
     assert "Real block ^ref-block" in matched
     assert "extra" not in matched
+
+
+def test_find_block_multi_line_paragraph() -> None:
+    text = "Unrelated.\n\nFirst line of paragraph.\nSecond line.\nThird line with ^block-id\n\nAfter.\n"
+    bounds = find_block(text, "^block-id")
+    assert bounds is not None
+    block = text[bounds[0] : bounds[1]]
+    assert block.startswith("First line of paragraph.")
+    assert "^block-id" in block
 
 
 def test_find_block_not_found() -> None:

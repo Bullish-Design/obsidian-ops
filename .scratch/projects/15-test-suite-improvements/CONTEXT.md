@@ -111,5 +111,27 @@ Step 6 completed:
 - Result: `src/obsidian_ops/server.py` coverage is 91%.
 
 Next action:
-1. Commit and push Step 6 changes.
-2. Implement Step 7 edge-case unit tests.
+1. Implement Step 7 edge-case unit tests.
+
+Step 7 completed:
+- Added targeted edge-case unit tests in:
+  - `tests/test_frontmatter.py`
+  - `tests/test_sandbox.py`
+  - `tests/test_search.py`
+  - `tests/test_content.py`
+- Verified with:
+  - `devenv shell -- pytest tests/ -v`
+  - `devenv shell -- pytest tests/ --cov=obsidian_ops --cov-report=term-missing`
+- Coverage after Step 7:
+  - `content.py`: 98%
+  - `frontmatter.py`: 95%
+  - `sandbox.py`: 100%
+  - `search.py`: 100%
+  - `server.py`: 91%
+  - `vault.py`: 97% (below the Step 9 target of 98%)
+  - Overall: 97%
+- Note: coverage output included a non-fatal `coverage` warning (`module-not-measured`) but results are still produced and stable.
+
+Next action:
+1. Commit and push Step 7 changes.
+2. Implement Step 8 integration report generation fixture and formatting.

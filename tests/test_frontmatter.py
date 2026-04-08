@@ -56,6 +56,26 @@ def test_parse_with_bom() -> None:
     assert body == "# Content starts here\nParagraph.\n"
 
 
+def test_parse_frontmatter_crlf_body_separator() -> None:
+    text = "---\ntitle: Test\n---\r\nBody here."
+    data, body = parse_frontmatter(text)
+    assert data == {"title": "Test"}
+    assert body == "Body here."
+
+
+def test_parse_frontmatter_none_yaml_block() -> None:
+    text = "---\n# just a comment\n---\nBody."
+    data, body = parse_frontmatter(text)
+    assert data == {}
+    assert body == "Body."
+
+
+def test_parse_frontmatter_non_dict_raises() -> None:
+    text = "---\n- item1\n- item2\n---\nBody."
+    with pytest.raises(FrontmatterError, match="mapping"):
+        parse_frontmatter(text)
+
+
 def test_serialize_roundtrip() -> None:
     data, body = parse_frontmatter(FRONTMATTER_TEXT)
     assert data is not None

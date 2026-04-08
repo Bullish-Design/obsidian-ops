@@ -51,6 +51,11 @@ def test_reject_empty(tmp_vault: Path) -> None:
         validate_path(tmp_vault, "")
 
 
+def test_validate_path_dot_resolves_to_root(tmp_vault: Path) -> None:
+    with pytest.raises(PathError, match="vault root"):
+        validate_path(tmp_vault, "./")
+
+
 def test_reject_symlink_escape(tmp_vault: Path) -> None:
     symlink_path = tmp_vault / "symlink_escape"
     if not symlink_path.is_symlink():
@@ -68,3 +73,12 @@ def test_new_file_validates_parent(tmp_vault: Path) -> None:
 def test_new_file_in_nonexistent_parent(tmp_vault: Path) -> None:
     path = validate_path(tmp_vault, "Future/Folder/New.md")
     assert path == tmp_vault / "Future/Folder/New.md"
+
+
+def test_validate_path_new_file_parent_escape(tmp_vault: Path) -> None:
+    symlink_path = tmp_vault / "symlink_escape"
+    if not symlink_path.is_symlink():
+        pytest.skip("symlink unsupported in this environment")
+
+    with pytest.raises(PathError, match="parent escapes"):
+        validate_path(tmp_vault, "symlink_escape/secret.md")

@@ -34,6 +34,11 @@ def test_walk_max_results(tmp_vault: Path) -> None:
     assert len(results) == 2
 
 
+def test_walk_vault_zero_max_results(tmp_vault: Path) -> None:
+    result = walk_vault(tmp_vault, "*.md", max_results=0)
+    assert result == []
+
+
 def test_walk_sorted(tmp_vault: Path) -> None:
     results = walk_vault(tmp_vault, "*.md", max_results=200)
     assert results == sorted(results)
@@ -83,3 +88,13 @@ def test_search_skips_large_files(tmp_vault: Path) -> None:
     results = search_content(tmp_vault, "A", files, max_results=200)
 
     assert all(result.path != "big.md" for result in results)
+
+
+def test_search_content_nonexistent_file(tmp_vault: Path) -> None:
+    result = search_content(tmp_vault, "test", ["ghost.md"], max_results=10)
+    assert result == []
+
+
+def test_search_content_empty_query(tmp_vault: Path) -> None:
+    result = search_content(tmp_vault, "", ["note.md"], max_results=10)
+    assert result == []
