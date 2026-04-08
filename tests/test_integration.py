@@ -109,17 +109,76 @@ class ReportWriter:
     """Collect markdown sections and write an integration test report."""
 
     def __init__(self) -> None:
-        self._sections: list[str] = []
+        self._entries: list[dict[str, str]] = []
 
-    def add_section(self, title: str, content: str) -> None:
-        self._sections.append(f"## {title}\n\n{content}\n")
+    def add_entry(self, title: str, method: str, result: str) -> None:
+        self._entries.append({"title": title, "method": method, "result": result})
+
+    def _case_dir_for_title(self, title: str) -> Path | None:
+        prefix = title.split(" ", 1)[0]
+        matches = sorted(SNAPSHOT_DIR.glob(f"{prefix}-*"))
+        if matches:
+            return matches[0]
+        return None
+
+    def _read_snapshot_files(self, root: Path) -> list[tuple[str, str]]:
+        if not root.exists():
+            return []
+        files: list[tuple[str, str]] = []
+        for path in sorted(p for p in root.rglob("*") if p.is_file()):
+            rel = path.relative_to(root).as_posix()
+            files.append((rel, path.read_text(encoding="utf-8")))
+        return files
+
+    def _code_lang_for_path(self, rel_path: str) -> str:
+        if rel_path.endswith(".md"):
+            return "markdown"
+        return "text"
 
     def write(self) -> Path:
         PROJECT_DIR.mkdir(parents=True, exist_ok=True)
-        body = "# Integration Test Report\n\n"
-        if self._sections:
-            body += "\n".join(self._sections)
-        REPORT_PATH.write_text(body, encoding="utf-8")
+        lines: list[str] = ["# Integration Test Report", ""]
+
+        for entry in self._entries:
+            title = entry["title"]
+            method = entry["method"]
+            result = entry["result"]
+            lines.append(f"## {title}")
+            lines.append("")
+            lines.append(f"**Method**: `{method}`")
+            lines.append(f"**Result**: {result}")
+            lines.append("")
+
+            case_dir = self._case_dir_for_title(title)
+            if case_dir is None:
+                continue
+
+            before_files = self._read_snapshot_files(case_dir / "before")
+            for rel_path, content in before_files:
+                lines.append(f"### Before (`{rel_path}`)")
+                lines.append(f"```{self._code_lang_for_path(rel_path)}")
+                lines.append(content.rstrip("\n"))
+                lines.append("```")
+                lines.append("")
+
+            after_files = self._read_snapshot_files(case_dir / "after")
+            for rel_path, content in after_files:
+                lines.append(f"### After (`{rel_path}`)")
+                lines.append(f"```{self._code_lang_for_path(rel_path)}")
+                lines.append(content.rstrip("\n"))
+                lines.append("```")
+                lines.append("")
+
+            result_path = case_dir / "result.txt"
+            if result_path.exists():
+                heading = "### Exception" if "raised" in result.lower() else "### Returned Value"
+                lines.append(heading)
+                lines.append("```text")
+                lines.append(result_path.read_text(encoding="utf-8").rstrip("\n"))
+                lines.append("```")
+                lines.append("")
+
+        REPORT_PATH.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         return REPORT_PATH
 
 
@@ -148,13 +207,19 @@ def integration_report() -> ReportWriter:
     return ReportWriter()
 
 
+@pytest.fixture(scope="module", autouse=True)
+def write_integration_report(integration_report: ReportWriter) -> None:
+    yield
+    integration_report.write()
+
+
 @pytest.fixture
 def integration_api(integration_vault: Path) -> Vault:
     return Vault(integration_vault)
 
 
 def _record_report(report: ReportWriter, title: str, method: str, result: str) -> None:
-    report.add_section(title, f"**Method**: `{method}`\n**Result**: {result}")
+    report.add_entry(title, method, result)
 
 
 def _seed_file(vault_root: Path, rel_path: str, content: str) -> Path:

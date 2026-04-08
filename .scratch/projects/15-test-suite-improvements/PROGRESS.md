@@ -9,8 +9,8 @@
 - Step 5: done
 - Step 6: done
 - Step 7: done
-- Step 8: in progress
-- Step 9: pending
+- Step 8: done
+- Step 9: in progress
 
 ## Checklist
 - [x] Step 0: BUG-1 fix + regression test
@@ -21,5 +21,5 @@
 - [x] Step 5: Error handling integration tests
 - [x] Step 6: Server endpoint coverage tests
 - [x] Step 7: Edge-case unit tests
-- [ ] Step 8: Integration report generation
+- [x] Step 8: Integration report generation
 - [ ] Step 9: Final verification and cleanup

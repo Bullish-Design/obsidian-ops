@@ -133,5 +133,19 @@ Step 7 completed:
 - Note: coverage output included a non-fatal `coverage` warning (`module-not-measured`) but results are still produced and stable.
 
 Next action:
-1. Commit and push Step 7 changes.
-2. Implement Step 8 integration report generation fixture and formatting.
+1. Implement Step 8 integration report generation fixture and formatting.
+
+Step 8 completed:
+- Updated `tests/test_integration.py` report system:
+  - `ReportWriter` now stores structured entries (`title`, `method`, `result`)
+  - report rendering now includes per-test snapshot `before`/`after` content and `result.txt`
+  - added module-scoped autouse finalizer fixture to write the report after test execution
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v`
+  - `cat .scratch/projects/15-test-suite-improvements/INTEGRATION_TEST_REPORT.md`
+  - `ls .scratch/projects/15-test-suite-improvements/integration/`
+- Report and snapshot outputs now match the required numbered test structure (01-29 + vault).
+
+Next action:
+1. Commit and push Step 8 changes.
+2. Run Step 9 final verification commands (tests, coverage, lint, report checks).
