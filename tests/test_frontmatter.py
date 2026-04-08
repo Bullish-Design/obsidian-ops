@@ -177,6 +177,17 @@ def test_delete_frontmatter_field_nonexistent(tmp_vault: Path) -> None:
     assert data["title"] == "Test Note"
 
 
+def test_delete_frontmatter_field_no_frontmatter_no_change(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    path = tmp_vault / "no-frontmatter.md"
+    before = path.read_text(encoding="utf-8")
+
+    vault.delete_frontmatter_field("no-frontmatter.md", "anything")
+
+    after = path.read_text(encoding="utf-8")
+    assert after == before
+
+
 def test_body_preserved_after_set(tmp_vault: Path) -> None:
     path = tmp_vault / "note.md"
     before = parse_frontmatter(path.read_text(encoding="utf-8"))[1]

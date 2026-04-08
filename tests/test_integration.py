@@ -7,8 +7,7 @@ import pytest
 
 from obsidian_ops.errors import ContentPatchError, FileTooLargeError, FrontmatterError, PathError
 from obsidian_ops.frontmatter import parse_frontmatter
-from obsidian_ops.vault import Vault
-from obsidian_ops.vault import MAX_READ_SIZE
+from obsidian_ops.vault import MAX_READ_SIZE, Vault
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROJECT_DIR = REPO_ROOT / ".scratch" / "projects" / "15-test-suite-improvements"
@@ -86,7 +85,9 @@ class SnapshotRecorder:
 
     def capture_listing_before(self) -> None:
         listing = "\n".join(
-            sorted(path.relative_to(self.vault_root).as_posix() for path in self.vault_root.rglob("*") if path.is_file())
+            sorted(
+                path.relative_to(self.vault_root).as_posix() for path in self.vault_root.rglob("*") if path.is_file()
+            )
         )
         (self.before_dir / "listing.txt").write_text(f"{listing}\n", encoding="utf-8")
 
@@ -193,7 +194,9 @@ def integration_vault() -> Path:
     _write_text(vault / "note.md", NOTE_CONTENT)
     _write_text(vault / "existing.md", "---\ntitle: Existing File\n---\n\nOriginal content that will be overwritten.\n")
     _write_text(vault / "to-delete.md", "# Delete Me\n\nThis file should be deleted.\n")
-    _write_text(vault / "Projects/Alpha.md", "---\nstatus: active\nowner: Alice\n---\n\n# Alpha\n\nProject alpha notes.\n")
+    _write_text(
+        vault / "Projects/Alpha.md", "---\nstatus: active\nowner: Alice\n---\n\n# Alpha\n\nProject alpha notes.\n"
+    )
     _write_text(vault / "Projects/Beta.md", "# Beta\n\nProject beta notes.\n")
     _write_text(vault / ".hidden/secret.md", "# Hidden\n\nThis should be excluded.\n")
     _write_text(vault / "_hidden_dir/internal.md", "# Internal\n\nThis should also be excluded.\n")
@@ -327,7 +330,9 @@ def test_05_delete_file(integration_api: Vault, integration_vault: Path, integra
     _record_report(integration_report, "05 — Delete File", 'vault.delete_file("to-delete.md")', "PASS")
 
 
-def test_06_list_files_default(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_06_list_files_default(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     recorder = SnapshotRecorder("06-list-files-default", integration_vault)
     files = integration_api.list_files()
     recorder.write_result("\n".join(files))
@@ -553,7 +558,9 @@ def test_16_read_heading(integration_api: Vault, integration_vault: Path, integr
     )
 
 
-def test_17_write_heading_replace(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_17_write_heading_replace(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     path = _seed_file(integration_vault, "cp-heading.md", NOTE_CONTENT)
     recorder = SnapshotRecorder("17-write-heading-replace", integration_vault)
     recorder.capture_before("cp-heading.md")
@@ -577,7 +584,9 @@ def test_17_write_heading_replace(integration_api: Vault, integration_vault: Pat
     )
 
 
-def test_18_write_heading_append(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_18_write_heading_append(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     path = _seed_file(integration_vault, "cp-append.md", NOTE_CONTENT)
     recorder = SnapshotRecorder("18-write-heading-append", integration_vault)
     recorder.capture_before("cp-append.md")
@@ -634,7 +643,9 @@ def test_20_write_block(integration_api: Vault, integration_vault: Path, integra
     )
 
 
-def test_21_write_block_list_item(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_21_write_block_list_item(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     path = _seed_file(integration_vault, "cp-list.md", NOTE_CONTENT)
     recorder = SnapshotRecorder("21-write-block-list-item", integration_vault)
     recorder.capture_before("cp-list.md")
@@ -654,7 +665,9 @@ def test_21_write_block_list_item(integration_api: Vault, integration_vault: Pat
     )
 
 
-def test_22_error_path_escape(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_22_error_path_escape(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     recorder = SnapshotRecorder("22-error-path-escape", integration_vault)
     with pytest.raises(PathError, match="traversal|not allowed") as exc_info:
         integration_api.read_file("../../etc/passwd")
@@ -667,7 +680,9 @@ def test_22_error_path_escape(integration_api: Vault, integration_vault: Path, i
     )
 
 
-def test_23_error_absolute_path(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_23_error_absolute_path(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     recorder = SnapshotRecorder("23-error-absolute-path", integration_vault)
     with pytest.raises(PathError, match="absolute") as exc_info:
         integration_api.read_file("/etc/passwd")
@@ -693,7 +708,9 @@ def test_24_error_empty_path(integration_api: Vault, integration_vault: Path, in
     )
 
 
-def test_25_error_file_not_found(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_25_error_file_not_found(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     recorder = SnapshotRecorder("25-error-file-not-found", integration_vault)
     with pytest.raises(FileNotFoundError) as exc_info:
         integration_api.read_file("nonexistent.md")
@@ -706,7 +723,9 @@ def test_25_error_file_not_found(integration_api: Vault, integration_vault: Path
     )
 
 
-def test_26_error_file_too_large(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_26_error_file_too_large(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     recorder = SnapshotRecorder("26-error-file-too-large", integration_vault)
     with pytest.raises(FileTooLargeError) as exc_info:
         integration_api.read_file("large-file.md")
@@ -719,7 +738,9 @@ def test_26_error_file_too_large(integration_api: Vault, integration_vault: Path
     )
 
 
-def test_27_error_block_not_found(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+def test_27_error_block_not_found(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
     _seed_file(integration_vault, "note.md", NOTE_CONTENT)
     recorder = SnapshotRecorder("27-error-block-not-found", integration_vault)
     with pytest.raises(ContentPatchError, match="not found") as exc_info:

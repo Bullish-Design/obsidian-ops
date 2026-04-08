@@ -147,5 +147,36 @@ Step 8 completed:
 - Report and snapshot outputs now match the required numbered test structure (01-29 + vault).
 
 Next action:
-1. Commit and push Step 8 changes.
-2. Run Step 9 final verification commands (tests, coverage, lint, report checks).
+1. Run Step 9 final verification commands (tests, coverage, lint, report checks).
+
+Step 9 completed:
+- Ran full suite:
+  - `devenv shell -- pytest tests/ -v` -> 167 passed
+- Ran coverage:
+  - `devenv shell -- pytest tests/ --cov=obsidian_ops --cov-report=term-missing`
+  - Final module coverage:
+    - `content.py`: 98%
+    - `frontmatter.py`: 95%
+    - `sandbox.py`: 100%
+    - `search.py`: 100%
+    - `server.py`: 91%
+    - `vault.py`: 100%
+    - Overall: 97%
+- Ran lint/format checks:
+  - `devenv shell -- ruff check src/ tests/` -> pass
+  - `devenv shell -- ruff format --check src/ tests/` -> pass
+- Verified report outputs:
+  - `wc -l .scratch/projects/15-test-suite-improvements/INTEGRATION_TEST_REPORT.md` -> 1512 lines
+  - `ls .scratch/projects/15-test-suite-improvements/integration/ | wc -l` -> 31 entries
+  - diff spot-check for set-frontmatter snapshots confirms expected replacement.
+
+Additional fix required during Step 9:
+- Added three vault-targeted tests to close final coverage gaps and satisfy the `vault.py >=98%` target:
+  - missing heading returns `None`
+  - missing block returns `None`
+  - append-heading path for files without trailing newline
+- Added one frontmatter no-op deletion test for files without frontmatter.
+
+Project status:
+- All Steps 0-9 complete.
+- Acceptance checklist satisfied.

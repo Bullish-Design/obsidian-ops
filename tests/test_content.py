@@ -105,6 +105,18 @@ def test_write_heading_appends(tmp_vault: Path) -> None:
     assert text.endswith("\n\n## Added\nAppended content")
 
 
+def test_write_heading_appends_when_file_lacks_trailing_newline(tmp_path: Path) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    (vault_root / "plain.md").write_text("Plain body", encoding="utf-8")
+
+    vault = Vault(vault_root)
+    vault.write_heading("plain.md", "## Added", "Section body.\n")
+
+    text = vault.read_file("plain.md")
+    assert text == "Plain body\n\n## Added\nSection body.\n"
+
+
 def test_find_block_paragraph() -> None:
     text = "Para one. ^ref\n\nPara two.\n"
     bounds = find_block(text, "^ref")
@@ -163,6 +175,11 @@ def test_read_heading_via_vault(tmp_vault: Path) -> None:
     assert "This is the summary section." in section
 
 
+def test_read_heading_via_vault_missing_returns_none(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    assert vault.read_heading("note.md", "## Missing") is None
+
+
 def test_write_heading_via_vault(tmp_vault: Path) -> None:
     vault = Vault(tmp_vault)
     vault.write_heading("note.md", "## Summary", "Replaced\n")
@@ -174,6 +191,11 @@ def test_read_block_via_vault(tmp_vault: Path) -> None:
     block = vault.read_block("note.md", "^ref-block")
     assert block is not None
     assert "^ref-block" in block
+
+
+def test_read_block_via_vault_missing_returns_none(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    assert vault.read_block("note.md", "^missing") is None
 
 
 def test_write_block_via_vault(tmp_vault: Path) -> None:
