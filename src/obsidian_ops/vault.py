@@ -108,6 +108,8 @@ class Vault:
             existing, body = parse_frontmatter(text)
             if existing is None:
                 return
+            if field not in existing:
+                return
 
             updated = dict(existing)
             updated.pop(field, None)

@@ -46,5 +46,20 @@ Step 2 completed:
   - `diff .scratch/projects/15-test-suite-improvements/integration/03-write-overwrite/before/existing.md .scratch/projects/15-test-suite-improvements/integration/03-write-overwrite/after/existing.md`
 
 Next action:
-1. Commit and push Step 2 changes.
-2. Implement Step 3 frontmatter integration tests.
+1. Implement Step 3 frontmatter integration tests.
+
+Step 3 completed:
+- Added `test_09` through `test_15` in `tests/test_integration.py` for:
+  - `get_frontmatter`, `set_frontmatter`, `update_frontmatter` (merge/shallow/create)
+  - `delete_frontmatter_field` and no-op deletion behavior
+- Seeded independent `fm-*.md` inputs per test to avoid test coupling.
+- Encountered one failure in `test_15`: deleting a missing field rewrote YAML formatting.
+  - Fixed `Vault.delete_frontmatter_field` to return early when `field` is absent.
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v -k "test_09 or test_10 or test_11 or test_12 or test_13 or test_14 or test_15"`
+  - `cat .scratch/projects/15-test-suite-improvements/integration/12-update-frontmatter-shallow/before/fm-shallow.md`
+  - `cat .scratch/projects/15-test-suite-improvements/integration/12-update-frontmatter-shallow/after/fm-shallow.md`
+
+Next action:
+1. Commit and push Step 3 changes.
+2. Implement Step 4 content patching integration tests.

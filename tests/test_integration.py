@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from obsidian_ops.frontmatter import parse_frontmatter
 from obsidian_ops.vault import Vault
 from obsidian_ops.vault import MAX_READ_SIZE
 
@@ -155,6 +156,12 @@ def _record_report(report: ReportWriter, title: str, method: str, result: str) -
     report.add_section(title, f"**Method**: `{method}`\n**Result**: {result}")
 
 
+def _seed_file(vault_root: Path, rel_path: str, content: str) -> Path:
+    path = vault_root / rel_path
+    _write_text(path, content)
+    return path
+
+
 def test_infrastructure_vault_created(integration_vault: Path) -> None:
     assert integration_vault.exists()
     assert (integration_vault / "note.md").exists()
@@ -294,5 +301,167 @@ def test_08_search_files(integration_api: Vault, integration_vault: Path, integr
         integration_report,
         "08 — Search Files",
         'vault.search_files("sprint")',
+        "PASS",
+    )
+
+
+def test_09_get_frontmatter(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    _seed_file(integration_vault, "fm-get.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("09-get-frontmatter", integration_vault)
+    recorder.capture_before("fm-get.md")
+
+    fm = integration_api.get_frontmatter("fm-get.md")
+    recorder.write_result(str(fm))
+    recorder.capture_after("fm-get.md")
+
+    assert fm is not None
+    assert fm["title"] == "Meeting Notes"
+    assert fm["tags"] == ["work", "weekly"]
+    assert fm["status"] == "draft"
+    assert fm["priority"] == "high"
+    assert fm["metadata"] == {"author": "Jane", "reviewed": False}
+    _record_report(
+        integration_report,
+        "09 — Get Frontmatter",
+        'vault.get_frontmatter("fm-get.md")',
+        "PASS",
+    )
+
+
+def test_10_set_frontmatter(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
+    path = _seed_file(integration_vault, "fm-set.md", NOTE_CONTENT)
+    before_text = path.read_text(encoding="utf-8")
+    _before_data, before_body = parse_frontmatter(before_text)
+    recorder = SnapshotRecorder("10-set-frontmatter", integration_vault)
+    recorder.capture_before("fm-set.md")
+
+    integration_api.set_frontmatter("fm-set.md", {"title": "Replaced", "new_field": True})
+    recorder.capture_after("fm-set.md")
+
+    after_text = path.read_text(encoding="utf-8")
+    data, body = parse_frontmatter(after_text)
+    assert data == {"title": "Replaced", "new_field": True}
+    assert body == before_body
+    assert "tags" not in data
+    assert "status" not in data
+    assert "priority" not in data
+    _record_report(
+        integration_report,
+        "10 — Set Frontmatter",
+        'vault.set_frontmatter("fm-set.md", {"title": "Replaced", "new_field": true})',
+        "PASS",
+    )
+
+
+def test_11_update_frontmatter_merge(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    _seed_file(integration_vault, "fm-merge.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("11-update-frontmatter-merge", integration_vault)
+    recorder.capture_before("fm-merge.md")
+
+    integration_api.update_frontmatter("fm-merge.md", {"status": "published", "reviewer": "Bob"})
+    recorder.capture_after("fm-merge.md")
+
+    fm = integration_api.get_frontmatter("fm-merge.md")
+    assert fm is not None
+    assert fm["title"] == "Meeting Notes"
+    assert fm["tags"] == ["work", "weekly"]
+    assert fm["priority"] == "high"
+    assert fm["status"] == "published"
+    assert fm["reviewer"] == "Bob"
+    _record_report(
+        integration_report,
+        "11 — Update Frontmatter (Merge)",
+        'vault.update_frontmatter("fm-merge.md", {"status": "published", "reviewer": "Bob"})',
+        "PASS",
+    )
+
+
+def test_12_update_frontmatter_shallow(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    _seed_file(integration_vault, "fm-shallow.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("12-update-frontmatter-shallow", integration_vault)
+    recorder.capture_before("fm-shallow.md")
+
+    integration_api.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})
+    recorder.capture_after("fm-shallow.md")
+
+    fm = integration_api.get_frontmatter("fm-shallow.md")
+    assert fm is not None
+    assert fm["metadata"] == {"author": "New"}
+    assert "reviewed" not in fm["metadata"]
+    _record_report(
+        integration_report,
+        "12 — Update Frontmatter (Shallow)",
+        'vault.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})',
+        "PASS",
+    )
+
+
+def test_13_update_frontmatter_creates(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    path = _seed_file(integration_vault, "no-fm.md", "# No Frontmatter\n\nBody stays here.\n")
+    before_text = path.read_text(encoding="utf-8")
+    recorder = SnapshotRecorder("13-update-frontmatter-creates", integration_vault)
+    recorder.capture_before("no-fm.md")
+
+    integration_api.update_frontmatter("no-fm.md", {"title": "Added"})
+    recorder.capture_after("no-fm.md")
+
+    after_text = path.read_text(encoding="utf-8")
+    fm, body = parse_frontmatter(after_text)
+    assert fm == {"title": "Added"}
+    assert body == before_text
+    _record_report(
+        integration_report,
+        "13 — Update Frontmatter (Creates)",
+        'vault.update_frontmatter("no-fm.md", {"title": "Added"})',
+        "PASS",
+    )
+
+
+def test_14_delete_frontmatter_field(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    _seed_file(integration_vault, "fm-delete.md", NOTE_CONTENT)
+    recorder = SnapshotRecorder("14-delete-frontmatter-field", integration_vault)
+    recorder.capture_before("fm-delete.md")
+
+    integration_api.delete_frontmatter_field("fm-delete.md", "priority")
+    recorder.capture_after("fm-delete.md")
+
+    fm = integration_api.get_frontmatter("fm-delete.md")
+    assert fm is not None
+    assert "priority" not in fm
+    assert fm["title"] == "Meeting Notes"
+    assert fm["status"] == "draft"
+    _record_report(
+        integration_report,
+        "14 — Delete Frontmatter Field",
+        'vault.delete_frontmatter_field("fm-delete.md", "priority")',
+        "PASS",
+    )
+
+
+def test_15_delete_frontmatter_field_noop(
+    integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
+) -> None:
+    path = _seed_file(integration_vault, "fm-noop.md", NOTE_CONTENT)
+    before = path.read_text(encoding="utf-8")
+    recorder = SnapshotRecorder("15-delete-frontmatter-field-noop", integration_vault)
+    recorder.capture_before("fm-noop.md")
+
+    integration_api.delete_frontmatter_field("fm-noop.md", "nonexistent")
+    recorder.capture_after("fm-noop.md")
+
+    after = path.read_text(encoding="utf-8")
+    assert after == before
+    _record_report(
+        integration_report,
+        "15 — Delete Frontmatter Field (No-op)",
+        'vault.delete_frontmatter_field("fm-noop.md", "nonexistent")',
         "PASS",
     )
