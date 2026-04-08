@@ -77,7 +77,14 @@ devenv shell -- ops-live-demo run --delay 0
 
 # Reuse current runtime state without auto-reset
 devenv shell -- ops-live-demo run --no-reset
+
+# Guided mode: pause after each step and press Enter to continue
+devenv shell -- ops-live-demo run --mode guided --delay 0 --no-reset
 ```
+
+Guided walkthrough reference:
+
+- `.scratch/projects/18-guided-demo-script/DEMO_SCRIPT.md`
 
 ### Inspect or cleanup
 

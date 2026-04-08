@@ -18,6 +18,7 @@ if str(SRC_DIR) not in sys.path:
 
 SOURCE_VAULT = REPO_ROOT / "demo" / "obsidian-ops" / "vault"
 DEFAULT_RUNTIME_ROOT = REPO_ROOT / ".scratch" / "projects" / "16-live-demo-script" / "generated"
+DEMO_SCRIPT_PATH = REPO_ROOT / ".scratch" / "projects" / "18-guided-demo-script" / "DEMO_SCRIPT.md"
 LIVE_NOTE_REL = Path("live-demo/live-ops.md")
 TEMP_NOTE_REL = Path("live-demo/temp-to-delete.md")
 NEW_NOTE_REL = Path("live-demo/new-note.md")
@@ -94,7 +95,22 @@ def sleep_between(delay_s: float) -> None:
         time.sleep(delay_s)
 
 
-def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
+def maybe_pause(step_label: str, step_name: str, mode: str) -> None:
+    if mode != "guided":
+        return
+
+    prompt = (
+        f"  [PAUSE after Step {step_label}] Review '{step_name}' against\n"
+        f"  {DEMO_SCRIPT_PATH}\n"
+        "  Press Enter to continue..."
+    )
+    try:
+        input(prompt)
+    except EOFError:
+        print("  [PAUSE] No interactive input available; continuing.")
+
+
+def run_demo(runtime_root: Path, delay_s: float, no_reset: bool, mode: str) -> int:
     try:
         from obsidian_ops.vault import Vault
     except ModuleNotFoundError as exc:
@@ -113,31 +129,39 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     print("Live vault demo starting.")
     print(f"Open this vault in Obsidian: {runtime_vault}")
     print(f"Watch this note: {runtime_vault / LIVE_NOTE_REL}")
+    if mode == "guided":
+        print("Guided mode: enabled (pause after each step).")
+        print(f"Guide: {DEMO_SCRIPT_PATH}")
     print("")
     log(runtime_root, f"Demo run started against {runtime_vault}")
 
-    def announce(name: str) -> None:
+    def announce(name: str) -> str:
         nonlocal step
-        print(f"[Step {step:02d}] {name}")
-        log(runtime_root, f"Step {step:02d}: {name}")
+        step_label = f"{step:02d}"
+        print(f"[Step {step_label}] {name}")
+        log(runtime_root, f"Step {step_label}: {name}")
         step += 1
+        return step_label
 
-    announce("Read the live note")
+    step_label = announce("Read the live note")
     initial = vault.read_file(str(LIVE_NOTE_REL))
     print(f"  Read {len(initial)} chars from {LIVE_NOTE_REL}")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Read the live note", mode)
 
-    announce("List live-demo markdown files")
+    step_label = announce("List live-demo markdown files")
     files = vault.list_files("live-demo/*.md")
     print(f"  Found files: {files}")
     sleep_between(delay_s)
+    maybe_pause(step_label, "List live-demo markdown files", mode)
 
-    announce("Search for 'block reference' across live-demo notes")
+    step_label = announce("Search for 'block reference' across live-demo notes")
     results = vault.search_files("block reference", glob="live-demo/*.md")
     print(f"  Search hits: {[item.path for item in results]}")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Search for 'block reference' across live-demo notes", mode)
 
-    announce("Create a new note")
+    step_label = announce("Create a new note")
     new_note_content = (
         "---\n"
         "title: Generated During Demo\n"
@@ -149,8 +173,9 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     vault.write_file(str(NEW_NOTE_REL), new_note_content)
     print(f"  Wrote {NEW_NOTE_REL}")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Create a new note", mode)
 
-    announce("Update frontmatter fields on the live note")
+    step_label = announce("Update frontmatter fields on the live note")
     vault.update_frontmatter(
         str(LIVE_NOTE_REL),
         {
@@ -160,13 +185,15 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     )
     print("  Updated status and last_demo_run")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Update frontmatter fields on the live note", mode)
 
-    announce("Delete one frontmatter field")
+    step_label = announce("Delete one frontmatter field")
     vault.delete_frontmatter_field(str(LIVE_NOTE_REL), "owner")
     print("  Removed frontmatter field: owner")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Delete one frontmatter field", mode)
 
-    announce("Replace the ## Agenda section")
+    step_label = announce("Replace the ## Agenda section")
     vault.write_heading(
         str(LIVE_NOTE_REL),
         "## Agenda",
@@ -174,8 +201,9 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     )
     print("  Agenda section replaced")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Replace the ## Agenda section", mode)
 
-    announce("Replace a paragraph block by block-id")
+    step_label = announce("Replace a paragraph block by block-id")
     vault.write_block(
         str(LIVE_NOTE_REL),
         "^demo-block",
@@ -183,8 +211,9 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     )
     print("  Paragraph block updated")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Replace a paragraph block by block-id", mode)
 
-    announce("Replace a list item block by block-id")
+    step_label = announce("Replace a list item block by block-id")
     vault.write_block(
         str(LIVE_NOTE_REL),
         "^demo-list",
@@ -192,14 +221,17 @@ def run_demo(runtime_root: Path, delay_s: float, no_reset: bool) -> int:
     )
     print("  List item block updated")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Replace a list item block by block-id", mode)
 
-    announce("Delete the temporary note")
+    step_label = announce("Delete the temporary note")
     vault.delete_file(str(TEMP_NOTE_REL))
     print(f"  Deleted {TEMP_NOTE_REL}")
     sleep_between(delay_s)
+    maybe_pause(step_label, "Delete the temporary note", mode)
 
-    announce("Report lock state")
+    step_label = announce("Report lock state")
     print(f"  is_busy() -> {vault.is_busy()}")
+    maybe_pause(step_label, "Report lock state", mode)
 
     log(runtime_root, "Demo run completed")
     print("")
@@ -237,6 +269,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     run_parser = subparsers.add_parser("run", help="Run the full step-by-step mutation demo.")
     run_parser.add_argument("--delay", type=float, default=1.5, help="Seconds to wait between steps (default: 1.5)")
     run_parser.add_argument(
+        "--mode",
+        choices=["auto", "guided"],
+        default="auto",
+        help="Execution mode: auto (timed) or guided (pause after every step).",
+    )
+    run_parser.add_argument(
         "--no-reset",
         action="store_true",
         help="Do not reset the runtime vault before running steps.",
@@ -253,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     runtime_root = Path(args.runtime_root).resolve()
 
     if args.command == "run":
-        return run_demo(runtime_root=runtime_root, delay_s=args.delay, no_reset=args.no_reset)
+        return run_demo(runtime_root=runtime_root, delay_s=args.delay, no_reset=args.no_reset, mode=args.mode)
     if args.command == "reset":
         runtime_vault = reset_runtime_vault(runtime_root)
         print(f"Runtime vault reset at: {runtime_vault}")
