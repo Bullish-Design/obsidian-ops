@@ -48,6 +48,44 @@ devenv shell -- ops-demo run \
   --vllm-model Qwen/Qwen3-4B-Instruct-2507-FP8
 ```
 
+## Live Vault Mutation Demo
+
+Use this when you want to open a vault in Obsidian and watch scripted file mutations happen in real time.
+
+The script works against a runtime copy of the demo vault:
+
+- Source vault: `demo/obsidian-ops/vault`
+- Runtime vault: `.scratch/projects/16-live-demo-script/generated/vault`
+
+### Reset runtime vault
+
+```bash
+devenv shell -- ops-live-demo reset
+```
+
+### Run step-by-step mutation demo
+
+```bash
+devenv shell -- ops-live-demo run
+```
+
+Optional flags:
+
+```bash
+# Faster run with no pause between steps
+devenv shell -- ops-live-demo run --delay 0
+
+# Reuse current runtime state without auto-reset
+devenv shell -- ops-live-demo run --no-reset
+```
+
+### Inspect or cleanup
+
+```bash
+devenv shell -- ops-live-demo status
+devenv shell -- ops-live-demo cleanup
+```
+
 ## Cleanup generated demo artifacts
 
 ```bash

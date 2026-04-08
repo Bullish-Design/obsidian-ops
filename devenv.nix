@@ -37,6 +37,11 @@
     echo hello from $GREET
   '';
 
+  scripts."ops-live-demo".exec = ''
+    PYTHONPATH="''${PWD}/src''${PYTHONPATH:+:''${PYTHONPATH}}" \
+      python scripts/live_vault_demo.py "$@"
+  '';
+
   enterShell = ''
     hello
     git --version
