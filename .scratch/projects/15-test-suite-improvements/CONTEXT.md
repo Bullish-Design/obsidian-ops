@@ -20,5 +20,19 @@ Step 0 completed:
   - `devenv shell -- pytest tests/test_content.py -k "substring" -v`
 
 Next action:
-1. Commit and push Step 0 changes.
-2. Implement Step 1 integration test infrastructure in `tests/test_integration.py`.
+1. Implement Step 1 integration test infrastructure in `tests/test_integration.py`.
+
+Step 1 completed:
+- Created `tests/test_integration.py` with:
+  - `SNAPSHOT_DIR`/`REPORT_PATH` constants
+  - `integration_vault` fixture (module scope) with realistic vault content
+  - `SnapshotRecorder` helper class
+  - `ReportWriter` helper class
+  - infrastructure tests (`test_infrastructure_*`)
+- Verified with:
+  - `devenv shell -- pytest tests/test_integration.py -v -k "infrastructure"`
+  - `ls .scratch/projects/15-test-suite-improvements/integration/vault/`
+
+Next action:
+1. Commit and push Step 1 changes.
+2. Implement Step 2 file operation integration tests.

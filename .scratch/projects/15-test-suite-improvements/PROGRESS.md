@@ -2,12 +2,13 @@
 
 ## Current Status
 - Step 0: done
-- Step 1: in progress
-- Steps 2-9: pending
+- Step 1: done
+- Step 2: in progress
+- Steps 3-9: pending
 
 ## Checklist
 - [x] Step 0: BUG-1 fix + regression test
-- [ ] Step 1: Integration infrastructure
+- [x] Step 1: Integration infrastructure
 - [ ] Step 2: File operation integration tests
 - [ ] Step 3: Frontmatter integration tests
 - [ ] Step 4: Content patching integration tests
