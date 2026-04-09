@@ -8,5 +8,5 @@
 - [done] Step 4: consolidate full VCS undo lifecycle.
 - [done] Step 5: harden HTTP server contract.
 - [done] Step 6: clarify file-matching and search contract.
-- [in-progress] Step 7: replace placeholder README.
-- [pending] Step 8: run final validation matrix.
+- [done] Step 7: replace placeholder README.
+- [done] Step 8: run final validation matrix.

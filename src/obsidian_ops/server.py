@@ -7,10 +7,10 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
 
-SERVER_INSTALL_HINT = 'Install server support with: pip install "obsidian-ops[server]"'
-
 from obsidian_ops.errors import BusyError, ContentPatchError, FileTooLargeError, FrontmatterError, PathError, VCSError
 from obsidian_ops.vault import Vault
+
+SERVER_INSTALL_HINT = 'Install server support with: pip install "obsidian-ops[server]"'
 
 
 def _load_fastapi_runtime() -> tuple[type["FastAPI"], type["JSONResponse"], type[Any], type[Any]]:

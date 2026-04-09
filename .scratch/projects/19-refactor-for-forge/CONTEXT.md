@@ -11,11 +11,8 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 6 search/glob changes,
-2. replace the placeholder README with full developer-facing documentation,
-3. run the Step 8 full validation matrix plus lint/format checks,
-4. manually confirm the documented install/server story matches reality,
-5. finish the project and leave the branch clean.
+Project implementation is complete. Final remaining action is to commit and push
+the validated README/final-verification changes, then leave the branch clean.
 
 ## Baseline Results
 
@@ -177,3 +174,47 @@ Step 6 validation results:
   - passed
 - `devenv shell -- pytest -q`
   - passed
+
+## Step 7 Result
+
+README replaced with real developer documentation covering:
+
+- what `obsidian-ops` is and is not,
+- installation modes,
+- development setup,
+- test commands,
+- library usage examples,
+- server usage examples and HTTP contract,
+- VCS prerequisites and undo expectations,
+- the error model,
+- integration notes for `obsidian-agent`.
+
+## Step 8 Result
+
+Final validation matrix:
+
+- `devenv shell -- pytest -q tests/test_frontmatter.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_content.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_vcs.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_server.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_integration.py`
+  - passed
+- `devenv shell -- pytest -q`
+  - passed
+- `devenv shell -- ruff check src tests`
+  - passed
+- `devenv shell -- ruff format --check src tests`
+  - passed
+
+Manual verification:
+
+- `devenv shell -- uv sync --extra dev`
+  - used successfully throughout the session as the documented dev/test install
+- `devenv shell -- timeout 2 obsidian-ops-server --vault tests --port 9201`
+  - server started successfully and shut down cleanly under timeout
+- README install, server, and API descriptions now match the implemented package
+  behavior
