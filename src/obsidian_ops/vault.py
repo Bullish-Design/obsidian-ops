@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from obsidian_ops.content import find_block, find_heading
+from obsidian_ops.content import find_block, find_heading, normalize_patch_content
 from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError
 from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
@@ -126,16 +126,17 @@ class Vault:
         with self._lock:
             text = self.read_file(path)
             bounds = find_heading(text, heading)
+            normalized_content = normalize_patch_content(content)
             if bounds is None:
                 base = text
                 if base and not base.endswith("\n"):
                     base += "\n"
                 if base and not base.endswith("\n\n"):
                     base += "\n"
-                replacement = f"{base}{heading}\n{content}"
+                replacement = f"{base}{heading}\n{normalized_content}"
             else:
                 start, end = bounds
-                replacement = f"{text[:start]}{content}{text[end:]}"
+                replacement = f"{text[:start]}{normalized_content}{text[end:]}"
             self._unsafe_write_file(path, replacement)
 
     def read_block(self, path: str, block_id: str) -> str | None:
@@ -153,7 +154,7 @@ class Vault:
             if bounds is None:
                 raise ContentPatchError(f"block reference not found: {block_id}")
             start, end = bounds
-            replacement = content if content.endswith("\n") else f"{content}\n"
+            replacement = normalize_patch_content(content)
             updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
 

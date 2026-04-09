@@ -102,7 +102,7 @@ def test_write_heading_appends(tmp_vault: Path) -> None:
     vault.write_heading("no-frontmatter.md", "## Added", "Appended content")
 
     text = vault.read_file("no-frontmatter.md")
-    assert text.endswith("\n\n## Added\nAppended content")
+    assert text.endswith("\n\n## Added\nAppended content\n")
 
 
 def test_write_heading_appends_when_file_lacks_trailing_newline(tmp_path: Path) -> None:
@@ -115,6 +115,25 @@ def test_write_heading_appends_when_file_lacks_trailing_newline(tmp_path: Path) 
 
     text = vault.read_file("plain.md")
     assert text == "Plain body\n\n## Added\nSection body.\n"
+
+
+def test_write_heading_replace_normalizes_trailing_newline(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    vault.write_heading("note.md", "## Summary", "Updated summary.")
+
+    assert vault.read_heading("note.md", "## Summary") == "Updated summary.\n"
+    text = vault.read_file("note.md")
+    assert "## Summary\nUpdated summary.\n## References" in text
+
+
+def test_write_heading_repeat_write_updates_in_place(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    vault.write_heading("no-frontmatter.md", "## Added", "First version.")
+    vault.write_heading("no-frontmatter.md", "## Added", "Second version.")
+
+    text = vault.read_file("no-frontmatter.md")
+    assert text.count("## Added\n") == 1
+    assert text.endswith("\n\n## Added\nSecond version.\n")
 
 
 def test_find_block_paragraph() -> None:
@@ -164,8 +183,22 @@ def test_write_block_replaces(tmp_vault: Path) -> None:
 
 def test_write_block_not_found_raises(tmp_vault: Path) -> None:
     vault = Vault(tmp_vault)
-    with pytest.raises(ContentPatchError):
+    with pytest.raises(ContentPatchError, match="block reference not found"):
         vault.write_block("note.md", "^missing", "x")
+
+
+def test_write_block_repeat_write_preserves_surrounding_content(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    before = vault.read_file("note.md")
+
+    vault.write_block("note.md", "^ref-block", "Updated once. ^ref-block")
+    vault.write_block("note.md", "^ref-block", "Updated twice. ^ref-block")
+
+    text = vault.read_file("note.md")
+    assert "## References" in text
+    assert "Important list item ^list-ref" in text
+    assert text.count("^ref-block") == before.count("^ref-block")
+    assert vault.read_block("note.md", "^ref-block") == "Updated twice. ^ref-block\n"
 
 
 def test_read_heading_via_vault(tmp_vault: Path) -> None:

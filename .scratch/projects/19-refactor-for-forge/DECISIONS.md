@@ -37,3 +37,21 @@
     wiping unrelated keys,
   - keeping replacement semantics for non-mapping values preserves simple
     existing behavior.
+
+## Step 3: Keep The Void Content API, But Make Heading/Block Behavior Explicit
+
+- Decision: do not introduce a new public result type in this step.
+- Contract:
+  - `Vault.write_heading()` replaces the body of an existing heading section,
+  - if the heading does not exist, `Vault.write_heading()` appends a new section
+    at the end of the file,
+  - heading writes normalize the inserted body so adjacent headings are not
+    corrupted by missing trailing newlines,
+  - `Vault.write_block()` remains strict and raises `ContentPatchError` when the
+    block anchor does not exist,
+  - repeated writes must preserve surrounding content instead of duplicating or
+    collapsing nearby sections.
+- Rationale:
+  - preserves backward compatibility for callers that only need success/failure,
+  - makes the low-level editing behavior deterministic without a larger public
+    API change.

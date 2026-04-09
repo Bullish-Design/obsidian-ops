@@ -69,3 +69,31 @@ metadata:
     status: done
     assigned_to: Bob
 ```
+
+## Content Patching
+
+`Vault.write_heading(path, heading, content)` treats `content` as the section
+body, not the heading line.
+
+- If `heading` already exists, the section body is replaced in place.
+- If `heading` is missing, a new section is appended at the end of the file.
+- The written content is normalized to end with a newline so adjacent headings
+  and repeated writes do not collapse together.
+
+Example: replace an existing section body.
+
+```python
+vault.write_heading("note.md", "## Summary", "Updated summary.")
+```
+
+Example: create a missing section at the end of the file.
+
+```python
+vault.write_heading("note.md", "## Follow Up", "Next steps.")
+```
+
+`Vault.write_block(path, block_id, content)` is strict:
+
+- it replaces the matching paragraph or list item when `block_id` exists,
+- it raises `ContentPatchError` when the block anchor is missing,
+- block writes also normalize the replacement content to end with a newline.

@@ -11,10 +11,10 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 2 frontmatter changes,
-2. inspect content patch implementation and tests,
-3. decide whether Step 3 needs a result type or only stronger tests/docs,
-4. implement Step 3,
+1. commit and push the validated Step 3 content patch changes,
+2. inspect the current VCS wrapper and undo behavior,
+3. design the single high-level `Vault` undo lifecycle API for Step 4,
+4. implement and validate Step 4,
 5. continue guide steps in order.
 
 ## Baseline Results
@@ -75,6 +75,34 @@ Test updates:
 Step 2 validation results:
 
 - `devenv shell -- pytest -q tests/test_frontmatter.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_vault.py`
+  - passed
+- `devenv shell -- pytest -q`
+  - passed
+
+## Step 3 Result
+
+Content patch behavior clarified:
+
+- kept the public void-return API,
+- documented that `write_heading()` replaces an existing section body and
+  appends a new section when the heading is missing,
+- normalized heading patch content to end with a newline so repeated writes and
+  following headings do not collapse together,
+- kept `write_block()` strict for missing anchors and documented that behavior,
+- reused the same newline-normalization helper for block writes.
+
+Test updates:
+
+- added explicit tests for heading replacement vs append behavior,
+- added repeat-write/idempotence-oriented tests,
+- added assertions that surrounding content remains intact,
+- strengthened the missing-block assertion to check the raised error message.
+
+Step 3 validation results:
+
+- `devenv shell -- pytest -q tests/test_content.py`
   - passed
 - `devenv shell -- pytest -q tests/test_vault.py`
   - passed

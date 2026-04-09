@@ -28,6 +28,11 @@ def _heading_level(heading_line: str) -> int | None:
     return len(match.group(1))
 
 
+def normalize_patch_content(content: str) -> str:
+    """Ensure patched content ends with a newline."""
+    return content if content.endswith("\n") else f"{content}\n"
+
+
 def find_heading(text: str, heading: str) -> tuple[int, int] | None:
     """Find content bounds for a heading section."""
     lines, offsets = _line_offsets(text)

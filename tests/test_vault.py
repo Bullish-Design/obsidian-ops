@@ -149,3 +149,14 @@ def test_update_frontmatter_nested_merge_preserves_body(tmp_vault: Path) -> None
     }
     after_body = vault.read_file("note.md").split("---\n", maxsplit=2)[2]
     assert after_body == before_body
+
+
+def test_write_heading_missing_section_repeat_write_keeps_single_heading(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+
+    vault.write_heading("no-frontmatter.md", "## Added", "First pass.")
+    vault.write_heading("no-frontmatter.md", "## Added", "Second pass.")
+
+    text = vault.read_file("no-frontmatter.md")
+    assert text.count("## Added\n") == 1
+    assert text.endswith("\n\n## Added\nSecond pass.\n")
