@@ -7,6 +7,6 @@
 - [done] Step 3: strengthen content patch semantics.
 - [done] Step 4: consolidate full VCS undo lifecycle.
 - [done] Step 5: harden HTTP server contract.
-- [in-progress] Step 6: clarify file-matching and search contract.
-- [pending] Step 7: replace placeholder README.
+- [done] Step 6: clarify file-matching and search contract.
+- [in-progress] Step 7: replace placeholder README.
 - [pending] Step 8: run final validation matrix.

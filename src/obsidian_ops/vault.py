@@ -76,7 +76,7 @@ class Vault:
         glob: str = "*.md",
         max_results: int = MAX_SEARCH_RESULTS,
     ) -> list[SearchResult]:
-        files = walk_vault(self.root, glob, max_results=MAX_LIST_RESULTS)
+        files = self.list_files(glob, max_results=MAX_LIST_RESULTS)
         return search_content(self.root, query, files, max_results=max_results)
 
     def get_frontmatter(self, path: str) -> dict[str, Any] | None:

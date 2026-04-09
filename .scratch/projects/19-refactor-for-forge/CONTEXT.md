@@ -11,11 +11,11 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 5 server contract changes,
-2. inspect the current `walk_vault()`/search glob behavior and tests,
-3. align the explicit search contract across implementation, docs, and tests,
-4. implement and validate Step 6,
-5. continue guide steps in order.
+1. commit and push the validated Step 6 search/glob changes,
+2. replace the placeholder README with full developer-facing documentation,
+3. run the Step 8 full validation matrix plus lint/format checks,
+4. manually confirm the documented install/server story matches reality,
+5. finish the project and leave the branch clean.
 
 ## Baseline Results
 
@@ -152,6 +152,28 @@ HTTP server contract hardened:
 Step 5 validation results:
 
 - `devenv shell -- pytest -q tests/test_server.py`
+  - passed
+- `devenv shell -- pytest -q`
+  - passed
+
+## Step 6 Result
+
+Search/glob contract clarified:
+
+- documented that glob matching applies to vault-relative paths rather than bare
+  filenames,
+- added explicit tests proving `Alpha.md` does not match
+  `Projects/Alpha.md`,
+- added vault-level tests proving `search_files(..., glob=...)` uses the same
+  scoped file set as `list_files()`,
+- routed `Vault.search_files()` through `list_files()` so the shared contract is
+  explicit in the implementation.
+
+Step 6 validation results:
+
+- `devenv shell -- pytest -q tests/test_search.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_vault.py`
   - passed
 - `devenv shell -- pytest -q`
   - passed

@@ -88,3 +88,17 @@
   - makes the server API self-describing and testable,
   - keeps the HTTP surface aligned with the now-supported `Vault`
     `undo_last_change()` boundary.
+
+## Step 6: Define Glob Matching Against Vault-Relative Paths
+
+- Decision: keep glob matching against vault-relative paths, not bare filenames.
+- Contract:
+  - `list_files("Projects/*.md")` matches files under the `Projects/` subtree,
+  - `list_files("Alpha.md")` does not match `Projects/Alpha.md`,
+  - `search_files(..., glob=...)` uses the same vault-relative-path filtering as
+    `list_files()`,
+  - hidden files and hidden directories remain excluded from both operations.
+- Rationale:
+  - this is the current implementation,
+  - subtree scoping is more useful for callers than filename-only matching,
+  - routing `search_files()` through `list_files()` removes contract drift.

@@ -143,3 +143,16 @@ Server error codes are stable:
 - `422` for request validation errors, `FrontmatterError`, and `ContentPatchError`
 - `424` for VCS precondition failures such as a missing `jj` binary or workspace
 - `500` for other `VCSError` execution failures
+
+## Search And File Matching
+
+`list_files()` and `search_files()` apply globs to vault-relative paths, not just
+the filename.
+
+- `vault.list_files("Projects/*.md")` matches `Projects/Alpha.md`
+- `vault.list_files("Alpha.md")` does not match `Projects/Alpha.md`
+- `vault.search_files("alpha", glob="Projects/*.md")` searches only files under
+  `Projects/`
+
+Both operations skip hidden files and hidden directories, and `search_files()`
+uses the same scoped file set as `list_files()`.

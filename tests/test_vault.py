@@ -110,6 +110,17 @@ def test_search_files_basic(tmp_vault: Path) -> None:
     assert any(r.path == "note.md" for r in results)
 
 
+def test_search_files_uses_relative_path_glob_scope(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    results = vault.search_files("alpha", glob="Projects/*.md")
+    assert [result.path for result in results] == ["Projects/Alpha.md"]
+
+
+def test_search_files_filename_only_glob_does_not_match_nested_path(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    assert vault.search_files("alpha", glob="Alpha.md") == []
+
+
 def test_is_busy(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     vault = Vault(tmp_vault)
 
