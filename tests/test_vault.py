@@ -121,3 +121,31 @@ def test_is_busy(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     vault.write_file("ignored.md", "ignored")
     assert vault.is_busy() is False
+
+
+def test_update_frontmatter_nested_merge_preserves_body(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    vault.set_frontmatter(
+        "note.md",
+        {
+            "title": "Test Note",
+            "metadata": {
+                "created": "2024-01-15",
+                "review": {"status": "pending", "owner": "Alice"},
+            },
+        },
+    )
+    before_body = vault.read_file("note.md").split("---\n", maxsplit=2)[2]
+
+    vault.update_frontmatter("note.md", {"metadata": {"review": {"status": "approved"}}})
+
+    updated = vault.get_frontmatter("note.md")
+    assert updated == {
+        "title": "Test Note",
+        "metadata": {
+            "created": "2024-01-15",
+            "review": {"status": "approved", "owner": "Alice"},
+        },
+    }
+    after_body = vault.read_file("note.md").split("---\n", maxsplit=2)[2]
+    assert after_body == before_body

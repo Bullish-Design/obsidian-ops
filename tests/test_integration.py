@@ -449,11 +449,11 @@ def test_11_update_frontmatter_merge(
     )
 
 
-def test_12_update_frontmatter_shallow(
+def test_12_update_frontmatter_nested_merge(
     integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
 ) -> None:
     _seed_file(integration_vault, "fm-shallow.md", NOTE_CONTENT)
-    recorder = SnapshotRecorder("12-update-frontmatter-shallow", integration_vault)
+    recorder = SnapshotRecorder("12-update-frontmatter-nested-merge", integration_vault)
     recorder.capture_before("fm-shallow.md")
 
     integration_api.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})
@@ -461,11 +461,10 @@ def test_12_update_frontmatter_shallow(
 
     fm = integration_api.get_frontmatter("fm-shallow.md")
     assert fm is not None
-    assert fm["metadata"] == {"author": "New"}
-    assert "reviewed" not in fm["metadata"]
+    assert fm["metadata"] == {"author": "New", "reviewed": False}
     _record_report(
         integration_report,
-        "12 — Update Frontmatter (Shallow)",
+        "12 — Update Frontmatter (Nested Merge)",
         'vault.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})',
         "PASS",
     )

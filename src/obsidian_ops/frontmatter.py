@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 import yaml
@@ -61,3 +62,17 @@ def serialize_frontmatter(data: dict[str, Any], body: str) -> str:
     """Serialize frontmatter data plus body content."""
     yaml_text = yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False).rstrip("\n")
     return f"---\n{yaml_text}\n---\n{body}"
+
+
+def merge_frontmatter(existing: Mapping[str, Any] | None, updates: Mapping[str, Any]) -> dict[str, Any]:
+    """Recursively merge nested mapping updates into frontmatter data."""
+    merged = dict(existing or {})
+
+    for key, value in updates.items():
+        current = merged.get(key)
+        if isinstance(current, Mapping) and isinstance(value, Mapping):
+            merged[key] = merge_frontmatter(current, value)
+            continue
+        merged[key] = value
+
+    return merged

@@ -8,7 +8,7 @@ from typing import Any
 
 from obsidian_ops.content import find_block, find_heading
 from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError
-from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
+from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
@@ -95,10 +95,7 @@ class Vault:
         with self._lock:
             text = self.read_file(path)
             existing, body = parse_frontmatter(text)
-
-            merged = dict(existing or {})
-            merged.update(updates)
-
+            merged = merge_frontmatter(existing, updates)
             updated_text = serialize_frontmatter(merged, body)
             self._unsafe_write_file(path, updated_text)
 

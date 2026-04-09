@@ -11,10 +11,10 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 1 packaging/environment changes,
-2. inspect frontmatter implementation and tests,
-3. define the deep-merge contract in docs/tests before code,
-4. implement Step 2,
+1. commit and push the validated Step 2 frontmatter changes,
+2. inspect content patch implementation and tests,
+3. decide whether Step 3 needs a result type or only stronger tests/docs,
+4. implement Step 3,
 5. continue guide steps in order.
 
 ## Baseline Results
@@ -52,4 +52,31 @@ Step 1 validation results:
 - `devenv shell -- pytest -q`
   - passed
 - `devenv shell -- obsidian-ops-server --help`
+  - passed
+
+## Step 2 Result
+
+Frontmatter merge semantics implemented:
+
+- added `merge_frontmatter()` in `src/obsidian_ops/frontmatter.py`,
+- `Vault.update_frontmatter()` now recursively merges nested mappings instead of
+  replacing whole nested subtrees,
+- top-level replacement behavior for simple values remains unchanged,
+- markdown body preservation and frontmatter creation behavior remain intact,
+- README examples now document the nested-merge contract.
+
+Test updates:
+
+- added helper-level merge tests,
+- updated vault-level tests for deep merge semantics,
+- updated the integration test and generated integration snapshots/report to
+  reflect the new contract.
+
+Step 2 validation results:
+
+- `devenv shell -- pytest -q tests/test_frontmatter.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_vault.py`
+  - passed
+- `devenv shell -- pytest -q`
   - passed
