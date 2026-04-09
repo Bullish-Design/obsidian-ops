@@ -3,17 +3,37 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import uvicorn
-from fastapi import Body, FastAPI
-from fastapi.responses import JSONResponse
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+
+SERVER_INSTALL_HINT = "Install server support with: pip install \"obsidian-ops[server]\""
 
 from obsidian_ops.errors import BusyError, ContentPatchError, FileTooLargeError, FrontmatterError, PathError, VCSError
 from obsidian_ops.vault import Vault
 
-BODY_STR_MAP = Body(...)
-BODY_ANY_MAP = Body(...)
+
+def _load_fastapi_runtime() -> tuple[Any, type[FastAPI], type[JSONResponse]]:
+    try:
+        from fastapi import Body, FastAPI
+        from fastapi.responses import JSONResponse
+    except ModuleNotFoundError as exc:
+        if exc.name != "fastapi":
+            raise
+        raise RuntimeError(f"FastAPI server support is not installed. {SERVER_INSTALL_HINT}") from exc
+    return Body, FastAPI, JSONResponse
+
+
+def _load_uvicorn_runtime() -> Any:
+    try:
+        import uvicorn
+    except ModuleNotFoundError as exc:
+        if exc.name != "uvicorn":
+            raise
+        raise RuntimeError(f"Uvicorn server support is not installed. {SERVER_INSTALL_HINT}") from exc
+    return uvicorn
 
 
 def _status_for_vcs_error(exc: VCSError) -> int:
@@ -24,6 +44,9 @@ def _status_for_vcs_error(exc: VCSError) -> int:
 
 
 def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) -> FastAPI:
+    Body, FastAPI, JSONResponse = _load_fastapi_runtime()
+    body_str_map = Body(...)
+    body_any_map = Body(...)
     app = FastAPI(title="obsidian-ops")
     app.state.vault = Vault(vault_root, jj_bin=jj_bin, jj_timeout=jj_timeout)
 
@@ -64,7 +87,7 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
         return {"content": app.state.vault.read_file(path)}
 
     @app.put("/files/{path:path}")
-    async def write_file(path: str, payload: dict[str, str] = BODY_STR_MAP) -> dict[str, str]:
+    async def write_file(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
         app.state.vault.write_file(path, payload["content"])
         return {"status": "ok"}
 
@@ -87,12 +110,12 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
         return {"frontmatter": app.state.vault.get_frontmatter(path)}
 
     @app.put("/frontmatter/{path:path}")
-    async def set_frontmatter(path: str, payload: dict[str, Any] = BODY_ANY_MAP) -> dict[str, str]:
+    async def set_frontmatter(path: str, payload: dict[str, Any] = body_any_map) -> dict[str, str]:
         app.state.vault.set_frontmatter(path, payload)
         return {"status": "ok"}
 
     @app.patch("/frontmatter/{path:path}")
-    async def update_frontmatter(path: str, payload: dict[str, Any] = BODY_ANY_MAP) -> dict[str, str]:
+    async def update_frontmatter(path: str, payload: dict[str, Any] = body_any_map) -> dict[str, str]:
         app.state.vault.update_frontmatter(path, payload)
         return {"status": "ok"}
 
@@ -102,25 +125,25 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
         return {"status": "ok"}
 
     @app.post("/content/heading/{path:path}/read")
-    async def read_heading(path: str, payload: dict[str, str] = BODY_STR_MAP) -> dict[str, Any]:
+    async def read_heading(path: str, payload: dict[str, str] = body_str_map) -> dict[str, Any]:
         return {"content": app.state.vault.read_heading(path, payload["heading"])}
 
     @app.put("/content/heading/{path:path}")
-    async def write_heading(path: str, payload: dict[str, str] = BODY_STR_MAP) -> dict[str, str]:
+    async def write_heading(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
         app.state.vault.write_heading(path, payload["heading"], payload["content"])
         return {"status": "ok"}
 
     @app.post("/content/block/{path:path}/read")
-    async def read_block(path: str, payload: dict[str, str] = BODY_STR_MAP) -> dict[str, Any]:
+    async def read_block(path: str, payload: dict[str, str] = body_str_map) -> dict[str, Any]:
         return {"content": app.state.vault.read_block(path, payload["block_id"])}
 
     @app.put("/content/block/{path:path}")
-    async def write_block(path: str, payload: dict[str, str] = BODY_STR_MAP) -> dict[str, str]:
+    async def write_block(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
         app.state.vault.write_block(path, payload["block_id"], payload["content"])
         return {"status": "ok"}
 
     @app.post("/vcs/commit")
-    async def commit(payload: dict[str, str] = BODY_STR_MAP) -> dict[str, str]:
+    async def commit(payload: dict[str, str] = body_str_map) -> dict[str, str]:
         app.state.vault.commit(payload["message"])
         return {"status": "ok"}
 
@@ -146,6 +169,7 @@ def main() -> None:
     args = parser.parse_args()
 
     app = create_app(args.vault, jj_bin=args.jj_bin, jj_timeout=args.jj_timeout)
+    uvicorn = _load_uvicorn_runtime()
     uvicorn.run(app, host=args.host, port=args.port)
 
 

@@ -42,9 +42,14 @@
       python scripts/live_vault_demo.py "$@"
   '';
 
+  scripts."ops-sync-dev".exec = ''
+    uv sync --extra dev
+  '';
+
   enterShell = ''
     hello
     git --version
+    echo "Sync dev dependencies with: devenv shell -- uv sync --extra dev"
   '';
 
   # https://devenv.sh/tasks/
