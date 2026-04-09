@@ -11,10 +11,10 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 4 VCS lifecycle changes,
-2. inspect the current FastAPI server request/response shapes and tests,
-3. design typed models plus the final undo endpoint behavior for Step 5,
-4. implement and validate Step 5,
+1. commit and push the validated Step 5 server contract changes,
+2. inspect the current `walk_vault()`/search glob behavior and tests,
+3. align the explicit search contract across implementation, docs, and tests,
+4. implement and validate Step 6,
 5. continue guide steps in order.
 
 ## Baseline Results
@@ -132,6 +132,26 @@ Step 4 validation results:
 - `devenv shell -- pytest -q tests/test_vcs.py`
   - passed
 - `devenv shell -- pytest -q tests/test_integration.py`
+  - passed
+- `devenv shell -- pytest -q`
+  - passed
+
+## Step 5 Result
+
+HTTP server contract hardened:
+
+- converted payload-heavy routes to typed Pydantic request models,
+- added typed response models for health, mutation status, file/search payloads,
+  frontmatter, VCS status, and undo,
+- normalized health to `{"ok": true, "status": "healthy"}`,
+- switched `/vcs/undo` to the new high-level `undo_last_change()` lifecycle and
+  exposed `restored`/`warning` in the response,
+- added request-validation tests for malformed write payloads and a warning-path
+  test for undo.
+
+Step 5 validation results:
+
+- `devenv shell -- pytest -q tests/test_server.py`
   - passed
 - `devenv shell -- pytest -q`
   - passed

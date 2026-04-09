@@ -73,3 +73,18 @@
   - keeps partial-success behavior explicit instead of hiding it in a caller,
   - preserves the lower-level primitive for direct Jujutsu interactions when
     needed.
+
+## Step 5: Use Typed FastAPI Models And Surface Undo Warnings
+
+- Decision: define typed request/response models in the server layer and switch
+  the `/vcs/undo` endpoint to the new high-level undo lifecycle.
+- Contract:
+  - `GET /health` returns `{"ok": true, "status": "healthy"}`,
+  - payload-heavy routes validate request bodies with Pydantic and return 422 on
+    malformed bodies,
+  - `/vcs/undo` returns `status`, `restored`, and `warning`,
+  - existing error-to-status mappings remain unchanged.
+- Rationale:
+  - makes the server API self-describing and testable,
+  - keeps the HTTP surface aligned with the now-supported `Vault`
+    `undo_last_change()` boundary.

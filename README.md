@@ -119,3 +119,27 @@ result = vault.undo_last_change()
 if result.warning:
     print(result.warning)
 ```
+
+## Server API
+
+The optional HTTP server mirrors the library API with typed request and response
+payloads.
+
+- `GET /health` returns `{"ok": true, "status": "healthy"}`
+- `PUT /files/{path}` expects `{"content": "..."}`
+- `PATCH /frontmatter/{path}` expects a JSON object representing frontmatter
+  fields to merge
+- `PUT /content/heading/{path}` expects `{"heading": "## Summary", "content": "..."}`
+- `PUT /content/block/{path}` expects `{"block_id": "^ref-block", "content": "..."}`
+- `POST /vcs/commit` expects `{"message": "..."}`
+- `POST /vcs/undo` returns `{"status": "ok", "restored": true|false, "warning": ...}`
+
+Server error codes are stable:
+
+- `400` for `PathError`
+- `404` for missing files
+- `409` for `BusyError`
+- `413` for `FileTooLargeError`
+- `422` for request validation errors, `FrontmatterError`, and `ContentPatchError`
+- `424` for VCS precondition failures such as a missing `jj` binary or workspace
+- `500` for other `VCSError` execution failures

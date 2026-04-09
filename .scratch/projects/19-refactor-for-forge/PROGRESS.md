@@ -6,7 +6,7 @@
 - [done] Step 2: implement explicit deep frontmatter patch semantics.
 - [done] Step 3: strengthen content patch semantics.
 - [done] Step 4: consolidate full VCS undo lifecycle.
-- [in-progress] Step 5: harden HTTP server contract.
-- [pending] Step 6: clarify file-matching and search contract.
+- [done] Step 5: harden HTTP server contract.
+- [in-progress] Step 6: clarify file-matching and search contract.
 - [pending] Step 7: replace placeholder README.
 - [pending] Step 8: run final validation matrix.

@@ -1,29 +1,28 @@
 """Optional FastAPI server for obsidian-ops."""
 
-from __future__ import annotations
-
 import argparse
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
 
-SERVER_INSTALL_HINT = "Install server support with: pip install \"obsidian-ops[server]\""
+SERVER_INSTALL_HINT = 'Install server support with: pip install "obsidian-ops[server]"'
 
 from obsidian_ops.errors import BusyError, ContentPatchError, FileTooLargeError, FrontmatterError, PathError, VCSError
 from obsidian_ops.vault import Vault
 
 
-def _load_fastapi_runtime() -> tuple[Any, type[FastAPI], type[JSONResponse]]:
+def _load_fastapi_runtime() -> tuple[type["FastAPI"], type["JSONResponse"], type[Any], type[Any]]:
     try:
-        from fastapi import Body, FastAPI
+        from fastapi import FastAPI
         from fastapi.responses import JSONResponse
+        from pydantic import BaseModel, RootModel
     except ModuleNotFoundError as exc:
-        if exc.name != "fastapi":
+        if exc.name not in {"fastapi", "pydantic"}:
             raise
         raise RuntimeError(f"FastAPI server support is not installed. {SERVER_INSTALL_HINT}") from exc
-    return Body, FastAPI, JSONResponse
+    return FastAPI, JSONResponse, BaseModel, RootModel
 
 
 def _load_uvicorn_runtime() -> Any:
@@ -43,10 +42,66 @@ def _status_for_vcs_error(exc: VCSError) -> int:
     return 500
 
 
-def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) -> FastAPI:
-    Body, FastAPI, JSONResponse = _load_fastapi_runtime()
-    body_str_map = Body(...)
-    body_any_map = Body(...)
+def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) -> "FastAPI":
+    FastAPI, JSONResponse, BaseModel, RootModel = _load_fastapi_runtime()
+
+    class HealthResponse(BaseModel):
+        ok: bool = True
+        status: Literal["healthy"] = "healthy"
+
+    class StatusResponse(BaseModel):
+        status: Literal["ok"] = "ok"
+
+    class UndoResponse(BaseModel):
+        status: Literal["ok"] = "ok"
+        restored: bool
+        warning: str | None = None
+
+    class FileContentResponse(BaseModel):
+        content: str
+
+    class OptionalContentResponse(BaseModel):
+        content: str | None
+
+    class FileListResponse(BaseModel):
+        files: list[str]
+
+    class SearchItem(BaseModel):
+        path: str
+        snippet: str
+
+    class SearchResponse(BaseModel):
+        results: list[SearchItem]
+
+    class FrontmatterResponse(BaseModel):
+        frontmatter: dict[str, Any] | None
+
+    class VCSStatusResponse(BaseModel):
+        status: str
+
+    class FileWriteRequest(BaseModel):
+        content: str
+
+    class HeadingReadRequest(BaseModel):
+        heading: str
+
+    class HeadingWriteRequest(BaseModel):
+        heading: str
+        content: str
+
+    class BlockReadRequest(BaseModel):
+        block_id: str
+
+    class BlockWriteRequest(BaseModel):
+        block_id: str
+        content: str
+
+    class CommitRequest(BaseModel):
+        message: str
+
+    class FrontmatterPayload(RootModel[dict[str, Any]]):
+        pass
+
     app = FastAPI(title="obsidian-ops")
     app.state.vault = Vault(vault_root, jj_bin=jj_bin, jj_timeout=jj_timeout)
 
@@ -78,83 +133,83 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
     async def handle_vcs(_request: Any, exc: VCSError) -> JSONResponse:
         return JSONResponse(status_code=_status_for_vcs_error(exc), content={"error": str(exc)})
 
-    @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    @app.get("/health", response_model=HealthResponse)
+    async def health() -> HealthResponse:
+        return HealthResponse()
 
-    @app.get("/files/{path:path}")
-    async def read_file(path: str) -> dict[str, str]:
-        return {"content": app.state.vault.read_file(path)}
+    @app.get("/files/{path:path}", response_model=FileContentResponse)
+    async def read_file(path: str) -> FileContentResponse:
+        return FileContentResponse(content=app.state.vault.read_file(path))
 
-    @app.put("/files/{path:path}")
-    async def write_file(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
-        app.state.vault.write_file(path, payload["content"])
-        return {"status": "ok"}
+    @app.put("/files/{path:path}", response_model=StatusResponse)
+    async def write_file(path: str, payload: FileWriteRequest) -> StatusResponse:
+        app.state.vault.write_file(path, payload.content)
+        return StatusResponse()
 
-    @app.delete("/files/{path:path}")
-    async def delete_file(path: str) -> dict[str, str]:
+    @app.delete("/files/{path:path}", response_model=StatusResponse)
+    async def delete_file(path: str) -> StatusResponse:
         app.state.vault.delete_file(path)
-        return {"status": "ok"}
+        return StatusResponse()
 
-    @app.get("/files")
-    async def list_files(pattern: str = "*.md", max_results: int = 200) -> dict[str, list[str]]:
-        return {"files": app.state.vault.list_files(pattern, max_results=max_results)}
+    @app.get("/files", response_model=FileListResponse)
+    async def list_files(pattern: str = "*.md", max_results: int = 200) -> FileListResponse:
+        return FileListResponse(files=app.state.vault.list_files(pattern, max_results=max_results))
 
-    @app.get("/search")
-    async def search(query: str, glob: str = "*.md", max_results: int = 50) -> dict[str, list[dict[str, str]]]:
+    @app.get("/search", response_model=SearchResponse)
+    async def search(query: str, glob: str = "*.md", max_results: int = 50) -> SearchResponse:
         results = app.state.vault.search_files(query, glob=glob, max_results=max_results)
-        return {"results": [{"path": r.path, "snippet": r.snippet} for r in results]}
+        return SearchResponse(results=[SearchItem(path=result.path, snippet=result.snippet) for result in results])
 
-    @app.get("/frontmatter/{path:path}")
-    async def get_frontmatter(path: str) -> dict[str, Any]:
-        return {"frontmatter": app.state.vault.get_frontmatter(path)}
+    @app.get("/frontmatter/{path:path}", response_model=FrontmatterResponse)
+    async def get_frontmatter(path: str) -> FrontmatterResponse:
+        return FrontmatterResponse(frontmatter=app.state.vault.get_frontmatter(path))
 
-    @app.put("/frontmatter/{path:path}")
-    async def set_frontmatter(path: str, payload: dict[str, Any] = body_any_map) -> dict[str, str]:
-        app.state.vault.set_frontmatter(path, payload)
-        return {"status": "ok"}
+    @app.put("/frontmatter/{path:path}", response_model=StatusResponse)
+    async def set_frontmatter(path: str, payload: FrontmatterPayload) -> StatusResponse:
+        app.state.vault.set_frontmatter(path, payload.root)
+        return StatusResponse()
 
-    @app.patch("/frontmatter/{path:path}")
-    async def update_frontmatter(path: str, payload: dict[str, Any] = body_any_map) -> dict[str, str]:
-        app.state.vault.update_frontmatter(path, payload)
-        return {"status": "ok"}
+    @app.patch("/frontmatter/{path:path}", response_model=StatusResponse)
+    async def update_frontmatter(path: str, payload: FrontmatterPayload) -> StatusResponse:
+        app.state.vault.update_frontmatter(path, payload.root)
+        return StatusResponse()
 
-    @app.delete("/frontmatter/{path:path}/{field}")
-    async def delete_frontmatter_field(path: str, field: str) -> dict[str, str]:
+    @app.delete("/frontmatter/{path:path}/{field}", response_model=StatusResponse)
+    async def delete_frontmatter_field(path: str, field: str) -> StatusResponse:
         app.state.vault.delete_frontmatter_field(path, field)
-        return {"status": "ok"}
+        return StatusResponse()
 
-    @app.post("/content/heading/{path:path}/read")
-    async def read_heading(path: str, payload: dict[str, str] = body_str_map) -> dict[str, Any]:
-        return {"content": app.state.vault.read_heading(path, payload["heading"])}
+    @app.post("/content/heading/{path:path}/read", response_model=OptionalContentResponse)
+    async def read_heading(path: str, payload: HeadingReadRequest) -> OptionalContentResponse:
+        return OptionalContentResponse(content=app.state.vault.read_heading(path, payload.heading))
 
-    @app.put("/content/heading/{path:path}")
-    async def write_heading(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
-        app.state.vault.write_heading(path, payload["heading"], payload["content"])
-        return {"status": "ok"}
+    @app.put("/content/heading/{path:path}", response_model=StatusResponse)
+    async def write_heading(path: str, payload: HeadingWriteRequest) -> StatusResponse:
+        app.state.vault.write_heading(path, payload.heading, payload.content)
+        return StatusResponse()
 
-    @app.post("/content/block/{path:path}/read")
-    async def read_block(path: str, payload: dict[str, str] = body_str_map) -> dict[str, Any]:
-        return {"content": app.state.vault.read_block(path, payload["block_id"])}
+    @app.post("/content/block/{path:path}/read", response_model=OptionalContentResponse)
+    async def read_block(path: str, payload: BlockReadRequest) -> OptionalContentResponse:
+        return OptionalContentResponse(content=app.state.vault.read_block(path, payload.block_id))
 
-    @app.put("/content/block/{path:path}")
-    async def write_block(path: str, payload: dict[str, str] = body_str_map) -> dict[str, str]:
-        app.state.vault.write_block(path, payload["block_id"], payload["content"])
-        return {"status": "ok"}
+    @app.put("/content/block/{path:path}", response_model=StatusResponse)
+    async def write_block(path: str, payload: BlockWriteRequest) -> StatusResponse:
+        app.state.vault.write_block(path, payload.block_id, payload.content)
+        return StatusResponse()
 
-    @app.post("/vcs/commit")
-    async def commit(payload: dict[str, str] = body_str_map) -> dict[str, str]:
-        app.state.vault.commit(payload["message"])
-        return {"status": "ok"}
+    @app.post("/vcs/commit", response_model=StatusResponse)
+    async def commit(payload: CommitRequest) -> StatusResponse:
+        app.state.vault.commit(payload.message)
+        return StatusResponse()
 
-    @app.post("/vcs/undo")
-    async def undo() -> dict[str, str]:
-        app.state.vault.undo()
-        return {"status": "ok"}
+    @app.post("/vcs/undo", response_model=UndoResponse)
+    async def undo() -> UndoResponse:
+        result = app.state.vault.undo_last_change()
+        return UndoResponse(restored=result.restored, warning=result.warning)
 
-    @app.get("/vcs/status")
-    async def status() -> dict[str, str]:
-        return {"status": app.state.vault.vcs_status()}
+    @app.get("/vcs/status", response_model=VCSStatusResponse)
+    async def status() -> VCSStatusResponse:
+        return VCSStatusResponse(status=app.state.vault.vcs_status())
 
     return app
 

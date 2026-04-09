@@ -14,6 +14,7 @@ from obsidian_ops.errors import (
     VCSError,
 )
 from obsidian_ops.server import create_app
+from obsidian_ops.vcs import UndoResult
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def client(tmp_vault: Path) -> TestClient:
 def test_health(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"ok": True, "status": "healthy"}
 
 
 def test_read_file(client: TestClient) -> None:
@@ -200,11 +201,22 @@ def test_vcs_status(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None
 def test_vcs_undo(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     vault = client.app.state.vault
     called: list[bool] = []
-    monkeypatch.setattr(vault, "undo", lambda: called.append(True))
+    monkeypatch.setattr(vault, "undo_last_change", lambda: (called.append(True), UndoResult(restored=True))[1])
 
     response = client.post("/vcs/undo")
     assert response.status_code == 200
     assert called
+    assert response.json() == {"status": "ok", "restored": True, "warning": None}
+
+
+def test_vcs_undo_warning_response(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    monkeypatch.setattr(vault, "undo_last_change", lambda: UndoResult(restored=False, warning="restore failed"))
+
+    response = client.post("/vcs/undo")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "restored": False, "warning": "restore failed"}
 
 
 def test_vcs_error_precondition_returns_424(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -225,3 +237,13 @@ def test_vcs_error_execution_returns_500(client: TestClient, monkeypatch: pytest
 
     response = client.post("/vcs/commit", json={"message": "x"})
     assert response.status_code == 500
+
+
+def test_write_file_validation_error_returns_422(client: TestClient) -> None:
+    response = client.put("/files/note.md", json={"body": "missing content"})
+    assert response.status_code == 422
+
+
+def test_write_heading_validation_error_returns_422(client: TestClient) -> None:
+    response = client.put("/content/heading/note.md", json={"heading": "## Summary"})
+    assert response.status_code == 422
