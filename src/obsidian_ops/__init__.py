@@ -10,11 +10,13 @@ from obsidian_ops.errors import (
     VCSError,
 )
 from obsidian_ops.search import SearchResult
+from obsidian_ops.vcs import UndoResult
 from obsidian_ops.vault import Vault
 
 __all__ = [
     "Vault",
     "SearchResult",
+    "UndoResult",
     "VaultError",
     "PathError",
     "FileTooLargeError",

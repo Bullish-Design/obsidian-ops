@@ -78,6 +78,17 @@ def test_undo_runs_correct_command(tmp_vault: Path) -> None:
     assert run.call_args.args[0] == ["jj", "undo"]
 
 
+def test_restore_from_previous_runs_correct_command(tmp_vault: Path) -> None:
+    jj = JJ(tmp_vault)
+
+    with patch("obsidian_ops.vcs.subprocess.run") as run:
+        run.return_value = SimpleNamespace(returncode=0, stdout="", stderr="")
+        jj.restore_from_previous()
+
+    run.assert_called_once()
+    assert run.call_args.args[0] == ["jj", "restore", "--from", "@-"]
+
+
 def test_status_returns_output(tmp_vault: Path) -> None:
     jj = JJ(tmp_vault)
 
@@ -143,6 +154,80 @@ def test_undo_acquires_lock(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
 
     vault.undo()
+    assert vault.is_busy() is False
+
+
+def test_undo_last_change_runs_undo_then_restore(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+
+    with patch("obsidian_ops.vcs.subprocess.run") as run:
+        run.return_value = SimpleNamespace(returncode=0, stdout="", stderr="")
+        result = vault.undo_last_change()
+
+    assert result.restored is True
+    assert result.warning is None
+    assert run.call_args_list == [
+        call(
+            ["jj", "undo"],
+            cwd=tmp_vault,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        ),
+        call(
+            ["jj", "restore", "--from", "@-"],
+            cwd=tmp_vault,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        ),
+    ]
+
+
+def test_undo_last_change_raises_when_undo_fails(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+
+    with patch("obsidian_ops.vcs.subprocess.run") as run:
+        run.side_effect = [
+            SimpleNamespace(returncode=1, stdout="bad", stderr="worse"),
+        ]
+        with pytest.raises(VCSError):
+            vault.undo_last_change()
+
+    assert run.call_count == 1
+
+
+def test_undo_last_change_returns_warning_when_restore_fails(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+
+    with patch("obsidian_ops.vcs.subprocess.run") as run:
+        run.side_effect = [
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+            SimpleNamespace(returncode=1, stdout="bad", stderr="worse"),
+        ]
+        result = vault.undo_last_change()
+
+    assert result.restored is False
+    assert result.warning is not None
+    assert "restore after undo failed" in result.warning
+
+
+def test_undo_last_change_acquires_lock(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = Vault(tmp_vault)
+
+    class StubJJ:
+        def undo(self) -> None:
+            assert vault.is_busy() is True
+
+        def restore_from_previous(self) -> None:
+            assert vault.is_busy() is True
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+
+    result = vault.undo_last_change()
+    assert result.restored is True
     assert vault.is_busy() is False
 
 

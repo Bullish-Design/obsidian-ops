@@ -7,12 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from obsidian_ops.content import find_block, find_heading, normalize_patch_content
-from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError
+from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VCSError, VaultError
 from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
-from obsidian_ops.vcs import JJ
+from obsidian_ops.vcs import JJ, UndoResult
 
 MAX_READ_SIZE = 512 * 1024
 MAX_LIST_RESULTS = 200
@@ -167,6 +167,16 @@ class Vault:
     def undo(self) -> None:
         with self._lock:
             self._get_jj().undo()
+
+    def undo_last_change(self) -> UndoResult:
+        with self._lock:
+            jj = self._get_jj()
+            jj.undo()
+            try:
+                jj.restore_from_previous()
+            except VCSError as exc:
+                return UndoResult(restored=False, warning=f"restore after undo failed: {exc}")
+            return UndoResult(restored=True)
 
     def vcs_status(self) -> str:
         return self._get_jj().status()

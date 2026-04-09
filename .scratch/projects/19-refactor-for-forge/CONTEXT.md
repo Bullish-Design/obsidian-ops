@@ -11,10 +11,10 @@ Initial session actions completed:
 
 Immediate next actions:
 
-1. commit and push the validated Step 3 content patch changes,
-2. inspect the current VCS wrapper and undo behavior,
-3. design the single high-level `Vault` undo lifecycle API for Step 4,
-4. implement and validate Step 4,
+1. commit and push the validated Step 4 VCS lifecycle changes,
+2. inspect the current FastAPI server request/response shapes and tests,
+3. design typed models plus the final undo endpoint behavior for Step 5,
+4. implement and validate Step 5,
 5. continue guide steps in order.
 
 ## Baseline Results
@@ -105,6 +105,33 @@ Step 3 validation results:
 - `devenv shell -- pytest -q tests/test_content.py`
   - passed
 - `devenv shell -- pytest -q tests/test_vault.py`
+  - passed
+- `devenv shell -- pytest -q`
+  - passed
+
+## Step 4 Result
+
+High-level undo lifecycle implemented:
+
+- added `UndoResult` as the explicit outcome model for the high-level undo flow,
+- added `JJ.restore_from_previous()` for the `jj restore --from @-` step,
+- added `Vault.undo_last_change()` as the preferred upstream undo API,
+- preserved `Vault.undo()` as the lower-level raw `jj undo` wrapper,
+- `undo_last_change()` now keeps the mutation lock held across both JJ calls and
+  returns warning information when restore fails after undo succeeds.
+
+Test updates:
+
+- added unit tests for raw restore dispatch, high-level undo success, raw undo
+  failure, restore warning behavior, and lock coverage,
+- added a real JJ-backed integration test proving a committed mutation can be
+  undone back to the original file content via `undo_last_change()`.
+
+Step 4 validation results:
+
+- `devenv shell -- pytest -q tests/test_vcs.py`
+  - passed
+- `devenv shell -- pytest -q tests/test_integration.py`
   - passed
 - `devenv shell -- pytest -q`
   - passed

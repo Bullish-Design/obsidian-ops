@@ -97,3 +97,25 @@ vault.write_heading("note.md", "## Follow Up", "Next steps.")
 - it replaces the matching paragraph or list item when `block_id` exists,
 - it raises `ContentPatchError` when the block anchor is missing,
 - block writes also normalize the replacement content to end with a newline.
+
+## Version Control
+
+Use `Vault.commit()` to snapshot the current working copy into JJ.
+
+For upstream undo behavior, prefer `Vault.undo_last_change()` over the lower
+level `Vault.undo()` method.
+
+- `Vault.undo()` runs only `jj undo`.
+- `Vault.undo_last_change()` runs the full lifecycle:
+  - `jj undo`
+  - `jj restore --from @-`
+- if the restore step fails after undo succeeds, `undo_last_change()` returns an
+  `UndoResult` with `restored=False` and a warning string instead of raising.
+
+Example:
+
+```python
+result = vault.undo_last_change()
+if result.warning:
+    print(result.warning)
+```

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -343,6 +344,43 @@ def test_06_list_files_default(
     assert ".hidden/secret.md" not in files
     assert "_hidden_dir/internal.md" not in files
     _record_report(integration_report, "06 — List Files (Default)", "vault.list_files()", "PASS")
+
+
+def test_vcs_undo_last_change_restores_original_content(tmp_path: Path) -> None:
+    if shutil.which("jj") is None:
+        pytest.skip("jj not installed")
+
+    vault_root = tmp_path / "jj-vault"
+    vault_root.mkdir()
+
+    def run_jj(*args: str) -> None:
+        result = subprocess.run(
+            ["jj", *args],
+            cwd=vault_root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(f"jj {' '.join(args)} failed:\nstdout: {result.stdout}\nstderr: {result.stderr}")
+
+    run_jj("git", "init")
+
+    note = vault_root / "note.md"
+    note.write_text("original\n", encoding="utf-8")
+
+    vault = Vault(vault_root)
+    vault.commit("seed")
+
+    note.write_text("modified\n", encoding="utf-8")
+    vault.commit("mutate")
+
+    result = vault.undo_last_change()
+
+    assert result.restored is True
+    assert result.warning is None
+    assert note.read_text(encoding="utf-8") == "original\n"
 
 
 def test_07_list_files_glob(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:

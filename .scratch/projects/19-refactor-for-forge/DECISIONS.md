@@ -55,3 +55,21 @@
   - preserves backward compatibility for callers that only need success/failure,
   - makes the low-level editing behavior deterministic without a larger public
     API change.
+
+## Step 4: Add `Vault.undo_last_change()` As The Supported Undo Lifecycle
+
+- Decision: keep `Vault.undo()` as the low-level `jj undo` wrapper, and add
+  `Vault.undo_last_change()` as the preferred upstream API.
+- Contract:
+  - `undo_last_change()` runs `jj undo`, then `jj restore --from @-`,
+  - if `jj undo` fails, raise `VCSError`,
+  - if `jj restore --from @-` fails after undo succeeds, return a result object
+    with `restored=False` and a warning string instead of raising,
+  - the mutation lock stays held across the full lifecycle,
+  - downstream callers should use `undo_last_change()` rather than stitching
+    together raw `jj` subprocess calls.
+- Rationale:
+  - mirrors the behavior already relied on in `obsidian-agent`,
+  - keeps partial-success behavior explicit instead of hiding it in a caller,
+  - preserves the lower-level primitive for direct Jujutsu interactions when
+    needed.
