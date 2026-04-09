@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from obsidian_ops.errors import VCSError
+
+
+@dataclass(frozen=True)
+class UndoResult:
+    """Outcome of the high-level undo lifecycle."""
+
+    restored: bool
+    warning: str | None = None
 
 
 class JJ:
@@ -47,6 +56,9 @@ class JJ:
 
     def undo(self) -> None:
         self._run("undo")
+
+    def restore_from_previous(self) -> None:
+        self._run("restore", "--from", "@-")
 
     def status(self) -> str:
         return self._run("status")

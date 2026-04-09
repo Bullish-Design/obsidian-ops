@@ -551,7 +551,7 @@ Some reference paragraph. ^ref-block
 - Third item
 ```
 
-## 12 — Update Frontmatter (Shallow)
+## 12 — Update Frontmatter (Nested Merge)
 
 **Method**: `vault.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})`
 **Result**: PASS
@@ -611,6 +611,7 @@ status: draft
 priority: high
 metadata:
   author: New
+  reviewed: false
 ---
 
 # Meeting Notes

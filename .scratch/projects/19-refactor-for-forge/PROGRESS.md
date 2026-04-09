@@ -1,0 +1,12 @@
+# Progress
+
+- [done] Create project tracking files and capture baseline context.
+- [done] Step 0: establish baseline.
+- [done] Step 1: fix packaging and environment contract.
+- [done] Step 2: implement explicit deep frontmatter patch semantics.
+- [done] Step 3: strengthen content patch semantics.
+- [done] Step 4: consolidate full VCS undo lifecycle.
+- [done] Step 5: harden HTTP server contract.
+- [done] Step 6: clarify file-matching and search contract.
+- [done] Step 7: replace placeholder README.
+- [done] Step 8: run final validation matrix.

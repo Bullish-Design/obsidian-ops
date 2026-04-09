@@ -19,6 +19,11 @@ def test_walk_subdirectory_glob(tmp_vault: Path) -> None:
     assert results == ["Projects/Alpha.md", "Projects/Beta.md"]
 
 
+def test_walk_glob_matches_relative_path_not_filename_only(tmp_vault: Path) -> None:
+    results = walk_vault(tmp_vault, "Alpha.md", max_results=200)
+    assert results == []
+
+
 def test_walk_skips_dotfiles(tmp_vault: Path) -> None:
     results = walk_vault(tmp_vault, "*.md", max_results=200)
     assert ".hidden/secret.md" not in results
@@ -72,6 +77,14 @@ def test_search_respects_glob(tmp_vault: Path) -> None:
     results = search_content(tmp_vault, "summary", files, max_results=50)
 
     assert all(result.path.startswith("Projects/") for result in results)
+
+
+def test_search_relative_path_glob_filename_only_does_not_match_nested_file(tmp_vault: Path) -> None:
+    files = walk_vault(tmp_vault, "Alpha.md", max_results=200)
+    results = search_content(tmp_vault, "alpha", files, max_results=50)
+
+    assert files == []
+    assert results == []
 
 
 def test_search_max_results(tmp_vault: Path) -> None:

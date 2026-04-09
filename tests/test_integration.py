@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -345,6 +346,43 @@ def test_06_list_files_default(
     _record_report(integration_report, "06 — List Files (Default)", "vault.list_files()", "PASS")
 
 
+def test_vcs_undo_last_change_restores_original_content(tmp_path: Path) -> None:
+    if shutil.which("jj") is None:
+        pytest.skip("jj not installed")
+
+    vault_root = tmp_path / "jj-vault"
+    vault_root.mkdir()
+
+    def run_jj(*args: str) -> None:
+        result = subprocess.run(
+            ["jj", *args],
+            cwd=vault_root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(f"jj {' '.join(args)} failed:\nstdout: {result.stdout}\nstderr: {result.stderr}")
+
+    run_jj("git", "init")
+
+    note = vault_root / "note.md"
+    note.write_text("original\n", encoding="utf-8")
+
+    vault = Vault(vault_root)
+    vault.commit("seed")
+
+    note.write_text("modified\n", encoding="utf-8")
+    vault.commit("mutate")
+
+    result = vault.undo_last_change()
+
+    assert result.restored is True
+    assert result.warning is None
+    assert note.read_text(encoding="utf-8") == "original\n"
+
+
 def test_07_list_files_glob(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
     recorder = SnapshotRecorder("07-list-files-glob", integration_vault)
     files = integration_api.list_files("Projects/*.md")
@@ -449,11 +487,11 @@ def test_11_update_frontmatter_merge(
     )
 
 
-def test_12_update_frontmatter_shallow(
+def test_12_update_frontmatter_nested_merge(
     integration_api: Vault, integration_vault: Path, integration_report: ReportWriter
 ) -> None:
     _seed_file(integration_vault, "fm-shallow.md", NOTE_CONTENT)
-    recorder = SnapshotRecorder("12-update-frontmatter-shallow", integration_vault)
+    recorder = SnapshotRecorder("12-update-frontmatter-nested-merge", integration_vault)
     recorder.capture_before("fm-shallow.md")
 
     integration_api.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})
@@ -461,11 +499,10 @@ def test_12_update_frontmatter_shallow(
 
     fm = integration_api.get_frontmatter("fm-shallow.md")
     assert fm is not None
-    assert fm["metadata"] == {"author": "New"}
-    assert "reviewed" not in fm["metadata"]
+    assert fm["metadata"] == {"author": "New", "reviewed": False}
     _record_report(
         integration_report,
-        "12 — Update Frontmatter (Shallow)",
+        "12 — Update Frontmatter (Nested Merge)",
         'vault.update_frontmatter("fm-shallow.md", {"metadata": {"author": "New"}})',
         "PASS",
     )

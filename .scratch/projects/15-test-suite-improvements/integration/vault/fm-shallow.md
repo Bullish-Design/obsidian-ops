@@ -7,6 +7,7 @@ status: draft
 priority: high
 metadata:
   author: New
+  reviewed: false
 ---
 
 # Meeting Notes

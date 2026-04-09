@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from obsidian_ops.errors import FrontmatterError
-from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
+from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.vault import Vault
 
 FRONTMATTER_TEXT = """---
@@ -87,6 +87,52 @@ def test_serialize_roundtrip() -> None:
     assert roundtrip_body == body
 
 
+def test_merge_frontmatter_recursively_merges_nested_mappings() -> None:
+    merged = merge_frontmatter(
+        {
+            "title": "Test Note",
+            "metadata": {
+                "created": "2024-01-15",
+                "owner": "Alice",
+                "nested": {"priority": "low", "reviewed": False},
+            },
+        },
+        {
+            "metadata": {
+                "owner": "Bob",
+                "nested": {"reviewed": True},
+            },
+        },
+    )
+
+    assert merged == {
+        "title": "Test Note",
+        "metadata": {
+            "created": "2024-01-15",
+            "owner": "Bob",
+            "nested": {"priority": "low", "reviewed": True},
+        },
+    }
+
+
+def test_merge_frontmatter_replaces_non_mapping_values() -> None:
+    merged = merge_frontmatter(
+        {
+            "tags": ["project", "active"],
+            "metadata": {"created": "2024-01-15"},
+        },
+        {
+            "tags": ["published"],
+            "metadata": "flattened",
+        },
+    )
+
+    assert merged == {
+        "tags": ["published"],
+        "metadata": "flattened",
+    }
+
+
 def test_get_frontmatter(tmp_vault: Path) -> None:
     vault = Vault(tmp_vault)
     data = vault.get_frontmatter("note.md")
@@ -134,20 +180,28 @@ def test_update_frontmatter_preserves_unmentioned(tmp_vault: Path) -> None:
     assert data["tags"] == ["test", "sample"]
 
 
-def test_update_frontmatter_shallow(tmp_vault: Path) -> None:
+def test_update_frontmatter_deep_merge(tmp_vault: Path) -> None:
     vault = Vault(tmp_vault)
     vault.set_frontmatter(
         "note.md",
         {
-            "metadata": {"created": "2024-01-15", "author": "Alice"},
+            "metadata": {
+                "created": "2024-01-15",
+                "author": "Alice",
+                "review": {"status": "pending", "assigned_to": "Bob"},
+            },
             "status": "draft",
         },
     )
-    vault.update_frontmatter("note.md", {"metadata": {"reviewed": True}})
+    vault.update_frontmatter("note.md", {"metadata": {"review": {"status": "done"}}})
 
     data = vault.get_frontmatter("note.md")
     assert data is not None
-    assert data["metadata"] == {"reviewed": True}
+    assert data["metadata"] == {
+        "created": "2024-01-15",
+        "author": "Alice",
+        "review": {"status": "done", "assigned_to": "Bob"},
+    }
     assert data["status"] == "draft"
 
 

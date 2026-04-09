@@ -110,6 +110,17 @@ def test_search_files_basic(tmp_vault: Path) -> None:
     assert any(r.path == "note.md" for r in results)
 
 
+def test_search_files_uses_relative_path_glob_scope(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    results = vault.search_files("alpha", glob="Projects/*.md")
+    assert [result.path for result in results] == ["Projects/Alpha.md"]
+
+
+def test_search_files_filename_only_glob_does_not_match_nested_path(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    assert vault.search_files("alpha", glob="Alpha.md") == []
+
+
 def test_is_busy(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     vault = Vault(tmp_vault)
 
@@ -121,3 +132,42 @@ def test_is_busy(tmp_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     vault.write_file("ignored.md", "ignored")
     assert vault.is_busy() is False
+
+
+def test_update_frontmatter_nested_merge_preserves_body(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+    vault.set_frontmatter(
+        "note.md",
+        {
+            "title": "Test Note",
+            "metadata": {
+                "created": "2024-01-15",
+                "review": {"status": "pending", "owner": "Alice"},
+            },
+        },
+    )
+    before_body = vault.read_file("note.md").split("---\n", maxsplit=2)[2]
+
+    vault.update_frontmatter("note.md", {"metadata": {"review": {"status": "approved"}}})
+
+    updated = vault.get_frontmatter("note.md")
+    assert updated == {
+        "title": "Test Note",
+        "metadata": {
+            "created": "2024-01-15",
+            "review": {"status": "approved", "owner": "Alice"},
+        },
+    }
+    after_body = vault.read_file("note.md").split("---\n", maxsplit=2)[2]
+    assert after_body == before_body
+
+
+def test_write_heading_missing_section_repeat_write_keeps_single_heading(tmp_vault: Path) -> None:
+    vault = Vault(tmp_vault)
+
+    vault.write_heading("no-frontmatter.md", "## Added", "First pass.")
+    vault.write_heading("no-frontmatter.md", "## Added", "Second pass.")
+
+    text = vault.read_file("no-frontmatter.md")
+    assert text.count("## Added\n") == 1
+    assert text.endswith("\n\n## Added\nSecond pass.\n")

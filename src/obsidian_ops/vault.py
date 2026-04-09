@@ -6,13 +6,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from obsidian_ops.content import find_block, find_heading
-from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError
-from obsidian_ops.frontmatter import parse_frontmatter, serialize_frontmatter
+from obsidian_ops.content import find_block, find_heading, normalize_patch_content
+from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError, VCSError
+from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
-from obsidian_ops.vcs import JJ
+from obsidian_ops.vcs import JJ, UndoResult
 
 MAX_READ_SIZE = 512 * 1024
 MAX_LIST_RESULTS = 200
@@ -76,7 +76,7 @@ class Vault:
         glob: str = "*.md",
         max_results: int = MAX_SEARCH_RESULTS,
     ) -> list[SearchResult]:
-        files = walk_vault(self.root, glob, max_results=MAX_LIST_RESULTS)
+        files = self.list_files(glob, max_results=MAX_LIST_RESULTS)
         return search_content(self.root, query, files, max_results=max_results)
 
     def get_frontmatter(self, path: str) -> dict[str, Any] | None:
@@ -95,10 +95,7 @@ class Vault:
         with self._lock:
             text = self.read_file(path)
             existing, body = parse_frontmatter(text)
-
-            merged = dict(existing or {})
-            merged.update(updates)
-
+            merged = merge_frontmatter(existing, updates)
             updated_text = serialize_frontmatter(merged, body)
             self._unsafe_write_file(path, updated_text)
 
@@ -129,16 +126,17 @@ class Vault:
         with self._lock:
             text = self.read_file(path)
             bounds = find_heading(text, heading)
+            normalized_content = normalize_patch_content(content)
             if bounds is None:
                 base = text
                 if base and not base.endswith("\n"):
                     base += "\n"
                 if base and not base.endswith("\n\n"):
                     base += "\n"
-                replacement = f"{base}{heading}\n{content}"
+                replacement = f"{base}{heading}\n{normalized_content}"
             else:
                 start, end = bounds
-                replacement = f"{text[:start]}{content}{text[end:]}"
+                replacement = f"{text[:start]}{normalized_content}{text[end:]}"
             self._unsafe_write_file(path, replacement)
 
     def read_block(self, path: str, block_id: str) -> str | None:
@@ -156,7 +154,7 @@ class Vault:
             if bounds is None:
                 raise ContentPatchError(f"block reference not found: {block_id}")
             start, end = bounds
-            replacement = content if content.endswith("\n") else f"{content}\n"
+            replacement = normalize_patch_content(content)
             updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
 
@@ -169,6 +167,16 @@ class Vault:
     def undo(self) -> None:
         with self._lock:
             self._get_jj().undo()
+
+    def undo_last_change(self) -> UndoResult:
+        with self._lock:
+            jj = self._get_jj()
+            jj.undo()
+            try:
+                jj.restore_from_previous()
+            except VCSError as exc:
+                return UndoResult(restored=False, warning=f"restore after undo failed: {exc}")
+            return UndoResult(restored=True)
 
     def vcs_status(self) -> str:
         return self._get_jj().status()
