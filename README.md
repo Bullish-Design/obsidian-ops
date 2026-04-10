@@ -292,6 +292,7 @@ Typical caller behavior is:
 Upstream callers should:
 
 - use `Vault` directly instead of shelling out to `jj`
+- treat direct `jj` subprocess usage outside `obsidian-ops` as a boundary violation
 - use `undo_last_change()` for user-visible undo flows
 - rely on `update_frontmatter()` for nested metadata patches instead of
   rewriting entire files
