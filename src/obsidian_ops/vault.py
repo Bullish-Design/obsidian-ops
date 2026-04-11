@@ -12,6 +12,7 @@ from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, seria
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
+from obsidian_ops.structure import StructureView, parse_structure
 from obsidian_ops.vcs import JJ, UndoResult
 
 MAX_READ_SIZE = 512 * 1024
@@ -78,6 +79,10 @@ class Vault:
     ) -> list[SearchResult]:
         files = self.list_files(glob, max_results=MAX_LIST_RESULTS)
         return search_content(self.root, query, files, max_results=max_results)
+
+    def list_structure(self, path: str) -> StructureView:
+        text = self.read_file(path)
+        return parse_structure(path, text)
 
     def get_frontmatter(self, path: str) -> dict[str, Any] | None:
         text = self.read_file(path)
