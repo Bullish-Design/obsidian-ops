@@ -1,5 +1,6 @@
 """obsidian-ops: Sandboxed operations on an Obsidian vault."""
 
+from obsidian_ops.anchors import EnsureBlockResult
 from obsidian_ops.errors import (
     BusyError,
     ContentPatchError,
@@ -21,6 +22,7 @@ __all__ = [
     "Heading",
     "Block",
     "StructureView",
+    "EnsureBlockResult",
     "VaultError",
     "PathError",
     "FileTooLargeError",

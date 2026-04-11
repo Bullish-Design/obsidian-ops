@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from obsidian_ops.anchors import EnsureBlockResult, ensure_block_result
 from obsidian_ops.content import find_block, find_heading, normalize_patch_content
 from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError, VCSError
 from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
@@ -162,6 +163,14 @@ class Vault:
             replacement = normalize_patch_content(content)
             updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
+
+    def ensure_block_id(self, path: str, line_start: int, line_end: int) -> EnsureBlockResult:
+        with self._lock:
+            text = self.read_file(path)
+            result, final_text = ensure_block_result(path, text, line_start, line_end)
+            if result.created:
+                self._unsafe_write_file(path, final_text)
+            return result
 
     def commit(self, message: str) -> None:
         with self._lock:
