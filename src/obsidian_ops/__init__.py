@@ -12,6 +12,7 @@ from obsidian_ops.errors import (
 )
 from obsidian_ops.search import SearchResult
 from obsidian_ops.structure import Block, Heading, StructureView
+from obsidian_ops.templates import CreatePageResult, TemplateDefinition, TemplateField
 from obsidian_ops.vault import Vault
 from obsidian_ops.vcs import UndoResult
 
@@ -23,6 +24,9 @@ __all__ = [
     "Block",
     "StructureView",
     "EnsureBlockResult",
+    "TemplateField",
+    "TemplateDefinition",
+    "CreatePageResult",
     "VaultError",
     "PathError",
     "FileTooLargeError",

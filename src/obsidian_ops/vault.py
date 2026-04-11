@@ -14,6 +14,12 @@ from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
 from obsidian_ops.structure import StructureView, parse_structure
+from obsidian_ops.templates import (
+    CreatePageResult,
+    TemplateDefinition,
+    create_from_template,
+    list_templates,
+)
 from obsidian_ops.vcs import JJ, UndoResult
 
 MAX_READ_SIZE = 512 * 1024
@@ -170,6 +176,21 @@ class Vault:
             result, final_text = ensure_block_result(path, text, line_start, line_end)
             if result.created:
                 self._unsafe_write_file(path, final_text)
+            return result
+
+    def list_templates(self) -> list[TemplateDefinition]:
+        return list_templates(self.root)
+
+    def create_from_template(self, template_id: str, fields: dict[str, str]) -> CreatePageResult:
+        with self._lock:
+            templates = list_templates(self.root)
+            result, body, commit_message = create_from_template(self.root, templates, template_id, fields)
+            self._unsafe_write_file(result.path, body)
+
+            jj = self._get_jj()
+            jj.describe(commit_message)
+            jj.new()
+
             return result
 
     def commit(self, message: str) -> None:
