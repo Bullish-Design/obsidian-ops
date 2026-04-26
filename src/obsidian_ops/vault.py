@@ -6,12 +6,20 @@ import os
 from pathlib import Path
 from typing import Any
 
+from obsidian_ops.anchors import EnsureBlockResult, ensure_block_result
 from obsidian_ops.content import find_block, find_heading, normalize_patch_content
 from obsidian_ops.errors import ContentPatchError, FileTooLargeError, VaultError, VCSError
 from obsidian_ops.frontmatter import merge_frontmatter, parse_frontmatter, serialize_frontmatter
 from obsidian_ops.lock import MutationLock
 from obsidian_ops.sandbox import validate_path
 from obsidian_ops.search import SearchResult, search_content, walk_vault
+from obsidian_ops.structure import StructureView, parse_structure
+from obsidian_ops.templates import (
+    CreatePageResult,
+    TemplateDefinition,
+    create_from_template,
+    list_templates,
+)
 from obsidian_ops.vcs import JJ, UndoResult
 
 MAX_READ_SIZE = 512 * 1024
@@ -78,6 +86,10 @@ class Vault:
     ) -> list[SearchResult]:
         files = self.list_files(glob, max_results=MAX_LIST_RESULTS)
         return search_content(self.root, query, files, max_results=max_results)
+
+    def list_structure(self, path: str) -> StructureView:
+        text = self.read_file(path)
+        return parse_structure(path, text)
 
     def get_frontmatter(self, path: str) -> dict[str, Any] | None:
         text = self.read_file(path)
@@ -157,6 +169,29 @@ class Vault:
             replacement = normalize_patch_content(content)
             updated_text = f"{text[:start]}{replacement}{text[end:]}"
             self._unsafe_write_file(path, updated_text)
+
+    def ensure_block_id(self, path: str, line_start: int, line_end: int) -> EnsureBlockResult:
+        with self._lock:
+            text = self.read_file(path)
+            result, final_text = ensure_block_result(path, text, line_start, line_end)
+            if result.created:
+                self._unsafe_write_file(path, final_text)
+            return result
+
+    def list_templates(self) -> list[TemplateDefinition]:
+        return list_templates(self.root)
+
+    def create_from_template(self, template_id: str, fields: dict[str, str]) -> CreatePageResult:
+        with self._lock:
+            templates = list_templates(self.root)
+            result, body, commit_message = create_from_template(self.root, templates, template_id, fields)
+            self._unsafe_write_file(result.path, body)
+
+            jj = self._get_jj()
+            jj.describe(commit_message)
+            jj.new()
+
+            return result
 
     def commit(self, message: str) -> None:
         with self._lock:
