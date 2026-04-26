@@ -28,10 +28,16 @@ Project: `21-jj-git-functionality-refactor`
   - Added `sync_fetch()`, `sync_push()`, `sync()`, `sync_status()`, and conflict bookmark helper
   - Added unit tests for happy path, conflict path, fetch failure, credential helper behavior
   - Verified with `devenv shell -- pytest tests/test_vcs.py -q`
+- Completed Phase 4:
+  - Added `/vcs/sync/readiness`, `/vcs/sync/ensure`, `/vcs/sync/remote`
+  - Added `/vcs/sync/fetch`, `/vcs/sync/push`, `/vcs/sync`, `/vcs/sync/status`
+  - Added server request/response models for new sync endpoints
+  - Added server tests covering each new endpoint
+  - Verified with `devenv shell -- pytest tests/test_vcs.py tests/test_server.py -q`
 
 ## Next
 
-Implement Phase 4:
-- add `/vcs/sync/*` server models and endpoints
-- add server endpoint tests for readiness/ensure/remote/fetch/push/sync/status
-- run focused server tests, commit, and push
+Implement integration sync tests:
+- add real-repo sync round-trip test (ensure/configure/commit/sync verification)
+- add real-repo conflict scenario test (divergence, conflict bookmark, status)
+- run integration tests, commit, and push
