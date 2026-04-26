@@ -383,6 +383,104 @@ def test_vcs_undo_last_change_restores_original_content(tmp_path: Path) -> None:
     assert note.read_text(encoding="utf-8") == "original\n"
 
 
+def test_vcs_sync_round_trip_with_local_remote(tmp_path: Path) -> None:
+    if shutil.which("jj") is None:
+        pytest.skip("jj not installed")
+
+    remote_bare = tmp_path / "remote.git"
+    vault_root = tmp_path / "vault"
+    remote_bare.mkdir(parents=True)
+    vault_root.mkdir(parents=True)
+
+    def run_cmd(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            list(args),
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(f"command failed: {' '.join(args)}\nstdout: {result.stdout}\nstderr: {result.stderr}")
+        return result
+
+    run_cmd(remote_bare, "git", "init", "--bare")
+
+    vault = Vault(vault_root)
+    ready = vault.ensure_sync_ready()
+    assert ready.status.value == "ready"
+    run_cmd(vault_root, "jj", "config", "set", "--repo", "user.name", "Integration Test")
+    run_cmd(vault_root, "jj", "config", "set", "--repo", "user.email", "integration@example.com")
+
+    vault.configure_sync_remote(remote_bare.as_uri(), token=None)
+
+    note = vault_root / "note.md"
+    note.write_text("hello sync\n", encoding="utf-8")
+    vault.commit("seed sync")
+
+    sync_result = vault.sync()
+    assert sync_result.ok is True
+
+    refs = run_cmd(tmp_path, "git", "--git-dir", remote_bare.as_posix(), "rev-list", "--count", "--all")
+    assert int(refs.stdout.strip()) >= 1
+
+
+def test_vcs_sync_conflict_records_conflict_state(tmp_path: Path) -> None:
+    if shutil.which("jj") is None:
+        pytest.skip("jj not installed")
+
+    remote_bare = tmp_path / "remote.git"
+    vault_root = tmp_path / "vault"
+    remote_bare.mkdir(parents=True)
+    vault_root.mkdir(parents=True)
+
+    def run_cmd(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            list(args),
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(f"command failed: {' '.join(args)}\nstdout: {result.stdout}\nstderr: {result.stderr}")
+        return result
+
+    run_cmd(remote_bare, "git", "init", "--bare")
+
+    vault = Vault(vault_root)
+    assert vault.ensure_sync_ready().status.value == "ready"
+    run_cmd(vault_root, "jj", "config", "set", "--repo", "user.name", "Integration Test")
+    run_cmd(vault_root, "jj", "config", "set", "--repo", "user.email", "integration@example.com")
+    vault.configure_sync_remote(remote_bare.as_uri(), token=None)
+
+    note = vault_root / "note.md"
+    note.write_text("base\n", encoding="utf-8")
+    vault.commit("base")
+    assert vault.sync().ok is True
+
+    note.write_text("local change\n", encoding="utf-8")
+    vault.commit("local change")
+
+    clone_dir = tmp_path / "clone"
+    run_cmd(tmp_path, "git", "clone", remote_bare.as_posix(), clone_dir.as_posix())
+    run_cmd(clone_dir, "git", "config", "user.email", "integration@example.com")
+    run_cmd(clone_dir, "git", "config", "user.name", "Integration Test")
+    (clone_dir / "note.md").write_text("remote change\n", encoding="utf-8")
+    run_cmd(clone_dir, "git", "add", "note.md")
+    run_cmd(clone_dir, "git", "commit", "-m", "remote change")
+    run_cmd(clone_dir, "git", "push", "origin", "HEAD:main")
+
+    result = vault.sync()
+    state = vault.sync_status()
+    assert state["last_sync_ok"] is result.ok
+    if result.conflict:
+        assert state["conflict_active"] is True
+        assert state["conflict_bookmark"] is not None
+
+
 def test_07_list_files_glob(integration_api: Vault, integration_vault: Path, integration_report: ReportWriter) -> None:
     recorder = SnapshotRecorder("07-list-files-glob", integration_vault)
     files = integration_api.list_files("Projects/*.md")

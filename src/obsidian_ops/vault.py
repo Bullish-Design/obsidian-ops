@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from obsidian_ops.anchors import EnsureBlockResult, ensure_block_result
 from obsidian_ops.content import find_block, find_heading, normalize_patch_content
@@ -20,12 +25,13 @@ from obsidian_ops.templates import (
     create_from_template,
     list_templates,
 )
-from obsidian_ops.vcs import JJ, UndoResult
+from obsidian_ops.vcs import JJ, ReadinessCheck, SyncResult, UndoResult, VCSReadiness
 
 MAX_READ_SIZE = 512 * 1024
 MAX_LIST_RESULTS = 200
 MAX_SEARCH_RESULTS = 50
 SNIPPET_CONTEXT = 80
+LOGGER = logging.getLogger(__name__)
 
 
 class Vault:
@@ -215,6 +221,228 @@ class Vault:
 
     def vcs_status(self) -> str:
         return self._get_jj().status()
+
+    def _is_git_dirty(self, root: Path) -> bool:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise VCSError(f"git status failed during readiness check: {result.stderr.strip()}")
+        return bool((result.stdout or "").strip())
+
+    def check_sync_readiness(self) -> ReadinessCheck:
+        jj_dir = self.root / ".jj"
+        git_dir = self.root / ".git"
+
+        try:
+            has_jj = jj_dir.exists()
+            has_git = git_dir.exists()
+
+            if has_jj:
+                try:
+                    remotes_output = self._get_jj().git_remote_list()
+                except VCSError:
+                    if has_git:
+                        detail = "colocated state needs verification"
+                        LOGGER.info("Sync readiness requires migration: %s", detail)
+                        return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+                    raise
+                remotes = [line.strip() for line in remotes_output.splitlines() if line.strip()]
+                if remotes:
+                    return ReadinessCheck(status=VCSReadiness.READY)
+                return ReadinessCheck(status=VCSReadiness.READY, detail="no remote configured")
+
+            if not has_git:
+                detail = "no vcs initialized"
+                LOGGER.info("Sync readiness requires migration: %s", detail)
+                return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+
+            if self._is_git_dirty(self.root):
+                detail = "git-only with uncommitted changes"
+                LOGGER.info("Sync readiness requires migration: %s", detail)
+                return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+
+            detail = "git-only, safe to colocate"
+            LOGGER.info("Sync readiness requires migration: %s", detail)
+            return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+        except Exception as exc:  # pragma: no cover - defensive classification guard
+            LOGGER.exception("Sync readiness check failed")
+            return ReadinessCheck(status=VCSReadiness.ERROR, detail=str(exc))
+
+    def ensure_sync_ready(self) -> ReadinessCheck:
+        readiness = self.check_sync_readiness()
+        if readiness.status in {VCSReadiness.READY, VCSReadiness.ERROR}:
+            return readiness
+
+        if readiness.detail in {"no vcs initialized", "git-only, safe to colocate"}:
+            with self._lock:
+                self._get_jj().git_init_colocate()
+            return self.check_sync_readiness()
+
+        LOGGER.info("Sync readiness not auto-fixed: %s", readiness.detail)
+        return readiness
+
+    def _sync_metadata_dir(self) -> Path:
+        return self.root / ".forge"
+
+    def _sync_state_path(self) -> Path:
+        return self._sync_metadata_dir() / "sync-state.json"
+
+    def _credential_helper_path(self) -> Path:
+        return self._sync_metadata_dir() / "git-credential.sh"
+
+    def _sync_env(self) -> dict[str, str] | None:
+        helper = self._credential_helper_path()
+        if not helper.exists():
+            return None
+        return {"GIT_ASKPASS": str(helper), "GIT_TERMINAL_PROMPT": "0"}
+
+    def _validate_remote_url(self, url: str) -> None:
+        parsed = urlparse(url)
+        is_http_like = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+        is_file_like = parsed.scheme == "file" and bool(parsed.path)
+        is_git_ssh = url.startswith("git@") and ":" in url
+        if not (is_http_like or is_file_like or is_git_ssh):
+            raise VCSError(f"invalid sync remote URL: {url}")
+
+    def _write_credential_helper(self, token: str) -> None:
+        helper = self._credential_helper_path()
+        helper.parent.mkdir(parents=True, exist_ok=True)
+        helper.write_text(
+            "#!/bin/sh\n"
+            f"echo \"password={token}\"\n"
+            "echo \"username=x-access-token\"\n",
+            encoding="utf-8",
+        )
+        helper.chmod(0o700)
+
+    def _clear_credential_helper(self) -> None:
+        helper = self._credential_helper_path()
+        if helper.exists():
+            helper.unlink()
+
+    def _now_iso(self) -> str:
+        return datetime.now(UTC).replace(microsecond=0).isoformat()
+
+    def _write_sync_state(self, payload: dict[str, Any]) -> None:
+        path = self._sync_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        tmp_path.replace(path)
+
+    def _read_sync_state(self) -> dict[str, Any]:
+        path = self._sync_state_path()
+        if not path.exists():
+            return {}
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _has_rebase_conflict(self) -> bool:
+        output = self._get_jj().log(revset="@", template="description")
+        return "conflict" in output.lower()
+
+    def _create_conflict_bookmark(self, prefix: str) -> str:
+        ts = self._now_iso().replace(":", "-").replace("+00:00", "Z")
+        name = f"{prefix}/{ts}"
+        self._get_jj().bookmark_create(name, revision="@")
+        return name
+
+    def _ensure_main_bookmark(self) -> str:
+        jj = self._get_jj()
+        try:
+            jj.bookmark_create("main", revision="@-")
+        except VCSError as exc:
+            if "already exists" not in str(exc).lower():
+                raise
+        return "main"
+
+    def configure_sync_remote(self, url: str, *, token: str | None = None, remote: str = "origin") -> None:
+        with self._lock:
+            self._validate_remote_url(url)
+            readiness = self.ensure_sync_ready()
+            if readiness.status != VCSReadiness.READY:
+                raise VCSError(f"sync workspace not ready: {readiness.detail or readiness.status.value}")
+
+            if token is None:
+                self._clear_credential_helper()
+            else:
+                self._write_credential_helper(token)
+
+            jj = self._get_jj()
+            try:
+                jj.git_remote_add(remote, url)
+            except VCSError as exc:
+                if "already exists" not in str(exc).lower():
+                    raise
+                jj.git_remote_set_url(remote, url)
+
+    def sync_fetch(self, *, remote: str = "origin") -> None:
+        readiness = self.ensure_sync_ready()
+        if readiness.status != VCSReadiness.READY:
+            raise VCSError(f"sync workspace not ready: {readiness.detail or readiness.status.value}")
+        self._get_jj().git_fetch(remote=remote, env=self._sync_env())
+
+    def sync_push(self, *, remote: str = "origin") -> None:
+        readiness = self.ensure_sync_ready()
+        if readiness.status != VCSReadiness.READY:
+            raise VCSError(f"sync workspace not ready: {readiness.detail or readiness.status.value}")
+        bookmark = self._ensure_main_bookmark()
+        self._get_jj().git_push(remote=remote, bookmark=bookmark, allow_new=True, env=self._sync_env())
+
+    def sync(self, *, remote: str = "origin", conflict_prefix: str = "sync-conflict") -> SyncResult:
+        readiness = self.ensure_sync_ready()
+        if readiness.status != VCSReadiness.READY:
+            return SyncResult(ok=False, error=f"sync workspace not ready: {readiness.detail or readiness.status.value}")
+
+        jj = self._get_jj()
+        env = self._sync_env()
+
+        try:
+            jj.git_fetch(remote=remote, env=env)
+            jj.rebase(destination="trunk()")
+
+            if self._has_rebase_conflict():
+                bookmark = self._create_conflict_bookmark(conflict_prefix)
+                jj.git_push(remote=remote, bookmark=bookmark, allow_new=True, env=env)
+                self._write_sync_state(
+                    {
+                        "last_sync_at": self._now_iso(),
+                        "last_sync_ok": False,
+                        "conflict_active": True,
+                        "conflict_bookmark": bookmark,
+                    }
+                )
+                return SyncResult(ok=False, conflict=True, conflict_bookmark=bookmark)
+
+            bookmark = self._ensure_main_bookmark()
+            jj.git_push(remote=remote, bookmark=bookmark, allow_new=True, env=env)
+            self._write_sync_state(
+                {
+                    "last_sync_at": self._now_iso(),
+                    "last_sync_ok": True,
+                    "conflict_active": False,
+                    "conflict_bookmark": None,
+                }
+            )
+            return SyncResult(ok=True)
+        except VCSError as exc:
+            self._write_sync_state(
+                {
+                    "last_sync_at": self._now_iso(),
+                    "last_sync_ok": False,
+                    "conflict_active": False,
+                    "conflict_bookmark": None,
+                }
+            )
+            return SyncResult(ok=False, error=str(exc))
+
+    def sync_status(self) -> dict[str, Any]:
+        return self._read_sync_state()
 
     def is_busy(self) -> bool:
         return self._lock.is_held

@@ -14,7 +14,7 @@ from obsidian_ops.errors import (
     VCSError,
 )
 from obsidian_ops.server import create_app
-from obsidian_ops.vcs import UndoResult
+from obsidian_ops.vcs import ReadinessCheck, SyncResult, UndoResult, VCSReadiness
 
 
 @pytest.fixture
@@ -247,3 +247,83 @@ def test_write_file_validation_error_returns_422(client: TestClient) -> None:
 def test_write_heading_validation_error_returns_422(client: TestClient) -> None:
     response = client.put("/content/heading/note.md", json={"heading": "## Summary"})
     assert response.status_code == 422
+
+
+def test_vcs_sync_readiness(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    monkeypatch.setattr(vault, "check_sync_readiness", lambda: ReadinessCheck(VCSReadiness.READY, None))
+    response = client.get("/vcs/sync/readiness")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "detail": None}
+
+
+def test_vcs_sync_ensure(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    monkeypatch.setattr(
+        vault,
+        "ensure_sync_ready",
+        lambda: ReadinessCheck(VCSReadiness.MIGRATION_NEEDED, "git-only with uncommitted changes"),
+    )
+    response = client.post("/vcs/sync/ensure")
+    assert response.status_code == 200
+    assert response.json()["status"] == "migration_needed"
+
+
+def test_vcs_sync_remote(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    seen: list[tuple[str, str | None, str]] = []
+
+    def fake_configure(url: str, *, token: str | None = None, remote: str = "origin") -> None:
+        seen.append((url, token, remote))
+
+    monkeypatch.setattr(vault, "configure_sync_remote", fake_configure)
+    response = client.put("/vcs/sync/remote", json={"url": "https://github.com/example/repo.git", "token": "x"})
+    assert response.status_code == 200
+    assert seen == [("https://github.com/example/repo.git", "x", "origin")]
+
+
+def test_vcs_sync_fetch(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    seen: list[str] = []
+    monkeypatch.setattr(vault, "sync_fetch", lambda *, remote="origin": seen.append(remote))
+    response = client.post("/vcs/sync/fetch", json={"remote": "origin"})
+    assert response.status_code == 200
+    assert seen == ["origin"]
+
+
+def test_vcs_sync_push(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    seen: list[str] = []
+    monkeypatch.setattr(vault, "sync_push", lambda *, remote="origin": seen.append(remote))
+    response = client.post("/vcs/sync/push", json={"remote": "origin"})
+    assert response.status_code == 200
+    assert seen == ["origin"]
+
+
+def test_vcs_sync(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    monkeypatch.setattr(
+        vault,
+        "sync",
+        lambda *, remote="origin", conflict_prefix="sync-conflict": SyncResult(ok=True),
+    )
+    response = client.post("/vcs/sync", json={})
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "conflict": False, "conflict_bookmark": None, "error": None}
+
+
+def test_vcs_sync_status(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault = client.app.state.vault
+    monkeypatch.setattr(
+        vault,
+        "sync_status",
+        lambda: {
+            "last_sync_at": "2026-04-26T12:34:56+00:00",
+            "last_sync_ok": True,
+            "conflict_active": False,
+            "conflict_bookmark": None,
+        },
+    )
+    response = client.get("/vcs/sync/status")
+    assert response.status_code == 200
+    assert response.json()["last_sync_ok"] is True

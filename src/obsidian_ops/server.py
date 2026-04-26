@@ -79,6 +79,16 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
     class VCSStatusResponse(BaseModel):
         status: str
 
+    class ReadinessResponse(BaseModel):
+        status: str
+        detail: str | None = None
+
+    class SyncResultResponse(BaseModel):
+        ok: bool
+        conflict: bool = False
+        conflict_bookmark: str | None = None
+        error: str | None = None
+
     class FileWriteRequest(BaseModel):
         content: str
 
@@ -98,6 +108,18 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
 
     class CommitRequest(BaseModel):
         message: str
+
+    class SyncRemoteRequest(BaseModel):
+        url: str
+        token: str | None = None
+        remote: str = "origin"
+
+    class SyncRemoteOpRequest(BaseModel):
+        remote: str = "origin"
+
+    class SyncRequest(BaseModel):
+        remote: str = "origin"
+        conflict_prefix: str = "sync-conflict"
 
     class FrontmatterPayload(RootModel[dict[str, Any]]):
         pass
@@ -210,6 +232,45 @@ def create_app(vault_root: str, *, jj_bin: str = "jj", jj_timeout: int = 120) ->
     @app.get("/vcs/status", response_model=VCSStatusResponse)
     async def status() -> VCSStatusResponse:
         return VCSStatusResponse(status=app.state.vault.vcs_status())
+
+    @app.get("/vcs/sync/readiness", response_model=ReadinessResponse)
+    async def sync_readiness() -> ReadinessResponse:
+        result = app.state.vault.check_sync_readiness()
+        return ReadinessResponse(status=result.status.value, detail=result.detail)
+
+    @app.post("/vcs/sync/ensure", response_model=ReadinessResponse)
+    async def sync_ensure() -> ReadinessResponse:
+        result = app.state.vault.ensure_sync_ready()
+        return ReadinessResponse(status=result.status.value, detail=result.detail)
+
+    @app.put("/vcs/sync/remote", response_model=StatusResponse)
+    async def sync_remote(payload: SyncRemoteRequest) -> StatusResponse:
+        app.state.vault.configure_sync_remote(payload.url, token=payload.token, remote=payload.remote)
+        return StatusResponse()
+
+    @app.post("/vcs/sync/fetch", response_model=StatusResponse)
+    async def sync_fetch(payload: SyncRemoteOpRequest) -> StatusResponse:
+        app.state.vault.sync_fetch(remote=payload.remote)
+        return StatusResponse()
+
+    @app.post("/vcs/sync/push", response_model=StatusResponse)
+    async def sync_push(payload: SyncRemoteOpRequest) -> StatusResponse:
+        app.state.vault.sync_push(remote=payload.remote)
+        return StatusResponse()
+
+    @app.post("/vcs/sync", response_model=SyncResultResponse)
+    async def sync(payload: SyncRequest) -> SyncResultResponse:
+        result = app.state.vault.sync(remote=payload.remote, conflict_prefix=payload.conflict_prefix)
+        return SyncResultResponse(
+            ok=result.ok,
+            conflict=result.conflict,
+            conflict_bookmark=result.conflict_bookmark,
+            error=result.error,
+        )
+
+    @app.get("/vcs/sync/status", response_model=dict[str, Any])
+    async def sync_status() -> dict[str, Any]:
+        return app.state.vault.sync_status()
 
     return app
 
