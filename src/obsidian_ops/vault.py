@@ -304,7 +304,10 @@ class Vault:
 
     def _validate_remote_url(self, url: str) -> None:
         parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        is_http_like = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+        is_file_like = parsed.scheme == "file" and bool(parsed.path)
+        is_git_ssh = url.startswith("git@") and ":" in url
+        if not (is_http_like or is_file_like or is_git_ssh):
             raise VCSError(f"invalid sync remote URL: {url}")
 
     def _write_credential_helper(self, token: str) -> None:
@@ -349,6 +352,15 @@ class Vault:
         self._get_jj().bookmark_create(name, revision="@")
         return name
 
+    def _ensure_main_bookmark(self) -> str:
+        jj = self._get_jj()
+        try:
+            jj.bookmark_create("main", revision="@-")
+        except VCSError as exc:
+            if "already exists" not in str(exc).lower():
+                raise
+        return "main"
+
     def configure_sync_remote(self, url: str, *, token: str | None = None, remote: str = "origin") -> None:
         with self._lock:
             self._validate_remote_url(url)
@@ -379,7 +391,8 @@ class Vault:
         readiness = self.ensure_sync_ready()
         if readiness.status != VCSReadiness.READY:
             raise VCSError(f"sync workspace not ready: {readiness.detail or readiness.status.value}")
-        self._get_jj().git_push(remote=remote, allow_new=True, env=self._sync_env())
+        bookmark = self._ensure_main_bookmark()
+        self._get_jj().git_push(remote=remote, bookmark=bookmark, allow_new=True, env=self._sync_env())
 
     def sync(self, *, remote: str = "origin", conflict_prefix: str = "sync-conflict") -> SyncResult:
         readiness = self.ensure_sync_ready()
@@ -406,7 +419,8 @@ class Vault:
                 )
                 return SyncResult(ok=False, conflict=True, conflict_bookmark=bookmark)
 
-            jj.git_push(remote=remote, allow_new=True, env=env)
+            bookmark = self._ensure_main_bookmark()
+            jj.git_push(remote=remote, bookmark=bookmark, allow_new=True, env=env)
             self._write_sync_state(
                 {
                     "last_sync_at": self._now_iso(),

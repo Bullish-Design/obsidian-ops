@@ -34,10 +34,18 @@ Project: `21-jj-git-functionality-refactor`
   - Added server request/response models for new sync endpoints
   - Added server tests covering each new endpoint
   - Verified with `devenv shell -- pytest tests/test_vcs.py tests/test_server.py -q`
+- Completed integration sync coverage:
+  - Added `test_vcs_sync_round_trip_with_local_remote` for real jj/git local remote sync
+  - Added `test_vcs_sync_conflict_records_conflict_state` for divergence + sync state behavior
+  - Added repo-local jj identity setup in integration tests for push compatibility
+  - Fixed sync push semantics to ensure a real bookmark (`main` at `@-`) is pushed
+  - Verified with:
+    - `devenv shell -- pytest tests/test_vcs.py -q`
+    - `devenv shell -- pytest tests/test_integration.py -k "vcs_sync_round_trip_with_local_remote or vcs_sync_conflict_records_conflict_state" -q -rs`
 
 ## Next
 
-Implement integration sync tests:
-- add real-repo sync round-trip test (ensure/configure/commit/sync verification)
-- add real-repo conflict scenario test (divergence, conflict bookmark, status)
-- run integration tests, commit, and push
+Finalization:
+- run full validation sweep (`ruff`, full tests)
+- bump version and add changelog entry
+- mark project complete and push final commit

@@ -609,11 +609,15 @@ def test_sync_happy_path_persists_success_state(tmp_path: Path, monkeypatch: pyt
             calls.append(f"push:{remote}:{bookmark}:{allow_new}")
             return ""
 
+        def bookmark_create(self, name: str, *, revision: str = "@") -> str:
+            calls.append(f"bookmark:{name}:{revision}")
+            return ""
+
     monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
     result = vault.sync()
     assert result.ok is True
     assert result.conflict is False
-    assert calls == ["fetch", "rebase:trunk()", "push:origin:None:True"]
+    assert calls == ["fetch", "rebase:trunk()", "bookmark:main:@-", "push:origin:main:True"]
     assert vault.sync_status()["last_sync_ok"] is True
 
 
