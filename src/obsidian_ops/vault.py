@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +22,13 @@ from obsidian_ops.templates import (
     create_from_template,
     list_templates,
 )
-from obsidian_ops.vcs import JJ, UndoResult
+from obsidian_ops.vcs import JJ, ReadinessCheck, UndoResult, VCSReadiness
 
 MAX_READ_SIZE = 512 * 1024
 MAX_LIST_RESULTS = 200
 MAX_SEARCH_RESULTS = 50
 SNIPPET_CONTEXT = 80
+LOGGER = logging.getLogger(__name__)
 
 
 class Vault:
@@ -215,6 +218,71 @@ class Vault:
 
     def vcs_status(self) -> str:
         return self._get_jj().status()
+
+    def _is_git_dirty(self, root: Path) -> bool:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise VCSError(f"git status failed during readiness check: {result.stderr.strip()}")
+        return bool((result.stdout or "").strip())
+
+    def check_sync_readiness(self) -> ReadinessCheck:
+        jj_dir = self.root / ".jj"
+        git_dir = self.root / ".git"
+
+        try:
+            has_jj = jj_dir.exists()
+            has_git = git_dir.exists()
+
+            if has_jj:
+                try:
+                    remotes_output = self._get_jj().git_remote_list()
+                except VCSError:
+                    if has_git:
+                        detail = "colocated state needs verification"
+                        LOGGER.info("Sync readiness requires migration: %s", detail)
+                        return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+                    raise
+                remotes = [line.strip() for line in remotes_output.splitlines() if line.strip()]
+                if remotes:
+                    return ReadinessCheck(status=VCSReadiness.READY)
+                return ReadinessCheck(status=VCSReadiness.READY, detail="no remote configured")
+
+            if not has_git:
+                detail = "no vcs initialized"
+                LOGGER.info("Sync readiness requires migration: %s", detail)
+                return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+
+            if self._is_git_dirty(self.root):
+                detail = "git-only with uncommitted changes"
+                LOGGER.info("Sync readiness requires migration: %s", detail)
+                return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+
+            detail = "git-only, safe to colocate"
+            LOGGER.info("Sync readiness requires migration: %s", detail)
+            return ReadinessCheck(status=VCSReadiness.MIGRATION_NEEDED, detail=detail)
+        except Exception as exc:  # pragma: no cover - defensive classification guard
+            LOGGER.exception("Sync readiness check failed")
+            return ReadinessCheck(status=VCSReadiness.ERROR, detail=str(exc))
+
+    def ensure_sync_ready(self) -> ReadinessCheck:
+        readiness = self.check_sync_readiness()
+        if readiness.status in {VCSReadiness.READY, VCSReadiness.ERROR}:
+            return readiness
+
+        if readiness.detail in {"no vcs initialized", "git-only, safe to colocate"}:
+            with self._lock:
+                self._get_jj().git_init_colocate()
+            return self.check_sync_readiness()
+
+        LOGGER.info("Sync readiness not auto-fixed: %s", readiness.detail)
+        return readiness
 
     def is_busy(self) -> bool:
         return self._lock.is_held

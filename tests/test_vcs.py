@@ -9,7 +9,7 @@ import pytest
 
 from obsidian_ops.errors import VCSError
 from obsidian_ops.vault import Vault
-from obsidian_ops.vcs import JJ
+from obsidian_ops.vcs import JJ, VCSReadiness
 
 
 def test_describe_runs_correct_command(tmp_vault: Path) -> None:
@@ -342,3 +342,167 @@ def test_log_can_disable_no_graph(tmp_vault: Path) -> None:
         run.return_value = SimpleNamespace(returncode=0, stdout="", stderr="")
         jj.log(no_graph=False)
     assert run.call_args.args[0] == ["jj", "log", "-r", "@", "-T", "builtin_log_oneline"]
+
+
+def test_check_sync_readiness_no_vcs(tmp_path: Path) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    result = Vault(vault_root).check_sync_readiness()
+    assert result.status == VCSReadiness.MIGRATION_NEEDED
+    assert result.detail == "no vcs initialized"
+
+
+def test_check_sync_readiness_jj_with_remote_is_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".jj").mkdir(parents=True)
+    vault = Vault(vault_root)
+
+    class StubJJ:
+        def git_remote_list(self) -> str:
+            return "origin\n"
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.READY
+    assert result.detail is None
+
+
+def test_check_sync_readiness_jj_no_remote_is_ready_with_detail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".jj").mkdir(parents=True)
+    vault = Vault(vault_root)
+
+    class StubJJ:
+        def git_remote_list(self) -> str:
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.READY
+    assert result.detail == "no remote configured"
+
+
+def test_check_sync_readiness_git_only_clean(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "_is_git_dirty", lambda _root: False)
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.MIGRATION_NEEDED
+    assert result.detail == "git-only, safe to colocate"
+
+
+def test_check_sync_readiness_git_only_dirty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "_is_git_dirty", lambda _root: True)
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.MIGRATION_NEEDED
+    assert result.detail == "git-only with uncommitted changes"
+
+
+def test_check_sync_readiness_git_and_jj_is_migration_needed_when_invalid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    (vault_root / ".jj").mkdir(parents=True)
+    vault = Vault(vault_root)
+
+    class StubJJ:
+        def git_remote_list(self) -> str:
+            raise VCSError("broken colocated state")
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.MIGRATION_NEEDED
+    assert result.detail == "colocated state needs verification"
+
+
+def test_check_sync_readiness_git_and_jj_can_be_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    (vault_root / ".jj").mkdir(parents=True)
+    vault = Vault(vault_root)
+
+    class StubJJ:
+        def git_remote_list(self) -> str:
+            return "origin\n"
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.check_sync_readiness()
+    assert result.status == VCSReadiness.READY
+    assert result.detail is None
+
+
+def test_check_sync_readiness_never_mutates(tmp_path: Path) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    _ = vault.check_sync_readiness()
+    assert not (vault_root / ".jj").exists()
+
+
+def test_ensure_sync_ready_initializes_when_no_vcs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    calls: list[str] = []
+
+    class StubJJ:
+        def git_init_colocate(self) -> str:
+            calls.append("init")
+            (vault_root / ".jj").mkdir(exist_ok=True)
+            return ""
+
+        def git_remote_list(self) -> str:
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.ensure_sync_ready()
+    assert calls == ["init"]
+    assert result.status == VCSReadiness.READY
+    assert (vault_root / ".jj").exists()
+
+
+def test_ensure_sync_ready_initializes_when_git_only_clean(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "_is_git_dirty", lambda _root: False)
+    calls: list[str] = []
+
+    class StubJJ:
+        def git_init_colocate(self) -> str:
+            calls.append("init")
+            (vault_root / ".jj").mkdir(exist_ok=True)
+            return ""
+
+        def git_remote_list(self) -> str:
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.ensure_sync_ready()
+    assert calls == ["init"]
+    assert result.status == VCSReadiness.READY
+    assert result.detail == "no remote configured"
+
+
+def test_ensure_sync_ready_does_not_mutate_git_only_dirty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    (vault_root / ".git").mkdir(parents=True)
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "_is_git_dirty", lambda _root: True)
+
+    class StubJJ:
+        def git_init_colocate(self) -> str:
+            pytest.fail("should not initialize when git working tree is dirty")
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.ensure_sync_ready()
+    assert result.status == VCSReadiness.MIGRATION_NEEDED
+    assert result.detail == "git-only with uncommitted changes"
+    assert not (vault_root / ".jj").exists()

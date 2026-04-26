@@ -16,11 +16,16 @@ Project: `21-jj-git-functionality-refactor`
   - Updated `__init__.py` exports
   - Added unit tests for new `JJ` methods and env pass-through in `tests/test_vcs.py`
   - Verified with `devenv shell -- pytest tests/test_vcs.py -q`
+- Completed Phase 2:
+  - Added `Vault._is_git_dirty()`, `Vault.check_sync_readiness()`, and `Vault.ensure_sync_ready()`
+  - Implemented safe auto-init policy and non-mutating readiness checks
+  - Added readiness matrix tests for no-vcs, git-only clean/dirty, jj-only, and colocated states
+  - Verified with `devenv shell -- pytest tests/test_vcs.py -q`
 
 ## Next
 
-Implement Phase 2:
-- add `Vault.check_sync_readiness()` and `Vault.ensure_sync_ready()`
-- add safe git-dirty detection helper
-- add unit tests for readiness/ensure behavior across VCS state matrix
+Implement Phase 3:
+- add `configure_sync_remote()`, `sync_fetch()`, `sync_push()`, `sync()`, `sync_status()`
+- add private sync helpers for credential script, conflict bookmarks, state persistence
+- add unit tests for happy/error/conflict flows and sync-state persistence
 - run focused tests, commit, and push
