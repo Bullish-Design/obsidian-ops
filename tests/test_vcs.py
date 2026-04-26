@@ -9,7 +9,7 @@ import pytest
 
 from obsidian_ops.errors import VCSError
 from obsidian_ops.vault import Vault
-from obsidian_ops.vcs import JJ, VCSReadiness
+from obsidian_ops.vcs import JJ, ReadinessCheck, VCSReadiness
 
 
 def test_describe_runs_correct_command(tmp_vault: Path) -> None:
@@ -506,3 +506,171 @@ def test_ensure_sync_ready_does_not_mutate_git_only_dirty(tmp_path: Path, monkey
     assert result.status == VCSReadiness.MIGRATION_NEEDED
     assert result.detail == "git-only with uncommitted changes"
     assert not (vault_root / ".jj").exists()
+
+
+def test_configure_sync_remote_with_token_writes_helper_and_adds_remote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+    calls: list[tuple[str, str, str]] = []
+
+    class StubJJ:
+        def git_remote_add(self, name: str, url: str) -> str:
+            calls.append(("add", name, url))
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    vault.configure_sync_remote("https://github.com/example/repo.git", token="secret", remote="origin")
+
+    helper = vault_root / ".forge" / "git-credential.sh"
+    assert helper.exists()
+    assert helper.stat().st_mode & 0o777 == 0o700
+    content = helper.read_text(encoding="utf-8")
+    assert "password=secret" in content
+    assert calls == [("add", "origin", "https://github.com/example/repo.git")]
+
+
+def test_configure_sync_remote_without_token_clears_helper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    helper = vault_root / ".forge" / "git-credential.sh"
+    helper.parent.mkdir(parents=True, exist_ok=True)
+    helper.write_text("old", encoding="utf-8")
+
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+
+    class StubJJ:
+        def git_remote_add(self, _name: str, _url: str) -> str:
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    vault.configure_sync_remote("https://github.com/example/repo.git", token=None)
+    assert not helper.exists()
+
+
+def test_sync_fetch_passes_askpass_env_when_helper_exists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    helper = vault_root / ".forge" / "git-credential.sh"
+    helper.parent.mkdir(parents=True, exist_ok=True)
+    helper.write_text("#!/bin/sh\n", encoding="utf-8")
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+    seen_env: dict[str, str] | None = None
+
+    class StubJJ:
+        def git_fetch(self, *, remote: str = "origin", env: dict[str, str] | None = None) -> str:
+            nonlocal seen_env
+            assert remote == "origin"
+            seen_env = env
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    vault.sync_fetch()
+    assert seen_env is not None
+    assert seen_env["GIT_ASKPASS"].endswith("git-credential.sh")
+
+
+def test_sync_status_returns_empty_without_prior_sync(tmp_path: Path) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    assert vault.sync_status() == {}
+
+
+def test_sync_happy_path_persists_success_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+    monkeypatch.setattr(vault, "_has_rebase_conflict", lambda: False)
+    monkeypatch.setattr(vault, "_now_iso", lambda: "2026-04-26T12:34:56+00:00")
+    calls: list[str] = []
+
+    class StubJJ:
+        def git_fetch(self, *, remote: str = "origin", env: dict[str, str] | None = None) -> str:
+            calls.append("fetch")
+            return ""
+
+        def rebase(self, *, destination: str = "trunk()") -> str:
+            calls.append(f"rebase:{destination}")
+            return ""
+
+        def git_push(
+            self,
+            *,
+            remote: str = "origin",
+            bookmark: str | None = None,
+            allow_new: bool = False,
+            env: dict[str, str] | None = None,
+        ) -> str:
+            calls.append(f"push:{remote}:{bookmark}:{allow_new}")
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.sync()
+    assert result.ok is True
+    assert result.conflict is False
+    assert calls == ["fetch", "rebase:trunk()", "push:origin:None:True"]
+    assert vault.sync_status()["last_sync_ok"] is True
+
+
+def test_sync_conflict_creates_bookmark_and_persists_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+    monkeypatch.setattr(vault, "_has_rebase_conflict", lambda: True)
+    monkeypatch.setattr(vault, "_create_conflict_bookmark", lambda _prefix: "sync-conflict/2026-04-26T12-34-56Z")
+    monkeypatch.setattr(vault, "_now_iso", lambda: "2026-04-26T12:34:56+00:00")
+    pushed_bookmarks: list[str | None] = []
+
+    class StubJJ:
+        def git_fetch(self, *, remote: str = "origin", env: dict[str, str] | None = None) -> str:
+            return ""
+
+        def rebase(self, *, destination: str = "trunk()") -> str:
+            return ""
+
+        def git_push(
+            self,
+            *,
+            remote: str = "origin",
+            bookmark: str | None = None,
+            allow_new: bool = False,
+            env: dict[str, str] | None = None,
+        ) -> str:
+            pushed_bookmarks.append(bookmark)
+            return ""
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.sync()
+    assert result.ok is False
+    assert result.conflict is True
+    assert result.conflict_bookmark == "sync-conflict/2026-04-26T12-34-56Z"
+    assert pushed_bookmarks == ["sync-conflict/2026-04-26T12-34-56Z"]
+    status = vault.sync_status()
+    assert status["conflict_active"] is True
+    assert status["conflict_bookmark"] == "sync-conflict/2026-04-26T12-34-56Z"
+
+
+def test_sync_fetch_failure_returns_error_and_persists_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+    vault = Vault(vault_root)
+    monkeypatch.setattr(vault, "ensure_sync_ready", lambda: ReadinessCheck(status=VCSReadiness.READY))
+    monkeypatch.setattr(vault, "_now_iso", lambda: "2026-04-26T12:34:56+00:00")
+
+    class StubJJ:
+        def git_fetch(self, *, remote: str = "origin", env: dict[str, str] | None = None) -> str:
+            raise VCSError("network failure")
+
+    monkeypatch.setattr(vault, "_get_jj", lambda: StubJJ())
+    result = vault.sync()
+    assert result.ok is False
+    assert "network failure" in (result.error or "")
+    status = vault.sync_status()
+    assert status["last_sync_ok"] is False
+    assert status["conflict_active"] is False
