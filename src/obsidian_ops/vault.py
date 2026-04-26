@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import subprocess
-import logging
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -327,7 +327,7 @@ class Vault:
             helper.unlink()
 
     def _now_iso(self) -> str:
-        return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        return datetime.now(UTC).replace(microsecond=0).isoformat()
 
     def _write_sync_state(self, payload: dict[str, Any]) -> None:
         path = self._sync_state_path()

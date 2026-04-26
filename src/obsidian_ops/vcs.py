@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Mapping
 
 from obsidian_ops.errors import VCSError
 
